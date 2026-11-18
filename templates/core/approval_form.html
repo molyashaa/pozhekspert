@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Пакет согласования{% endblock %}
+{% block crumbs %}<a href="{% url 'approvals' %}">Согласования</a> / <b>{% if package %}{{ package.title }}{% else %}Новый пакет{% endif %}</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if package %}{{ package.title }}{% else %}Новый пакет согласования{% endif %}</h1><p>Автоматическое согласование с МЧС в прототип не входит: менеджер фиксирует отправку и ответ вручную.</p></div></div>
+<form class="card" method="post" novalidate style="max-width:960px">{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.project %}
+    {% include "partials/field.html" with field=form.title %}
+    {% include "partials/field.html" with field=form.authority %}
+    {% include "partials/field.html" with field=form.status %}
+    {% include "partials/field.html" with field=form.sent_date %}
+    {% include "partials/field.html" with field=form.response_date %}
+    <div class="field full"><label>{{ form.documents.label }}</label><div class="checks" style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:10px">{{ form.documents }}</div></div>
+    {% include "partials/field.html" with field=form.response_note full=1 %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Сохранить пакет</button><a class="btn" href="{% url 'approvals' %}">Отмена</a>{% if package %}<a class="btn" href="{% url 'remark_external' %}">Зарегистрировать замечание по ответу</a>{% endif %}</div>
+</form>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{% if is_new %}Новый этап{% else %}Изменить этап{% endif %}{% endblock %}
+{% block crumbs %}<a href="{% url 'projects' %}">Проекты</a> / <a href="{% url 'project_detail' project.pk %}">{{ project.name }}</a> / <b>{% if is_new %}Новый этап{% else %}Этап {{ stage.sequence_no }}{% endif %}</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if is_new %}Добавить этап{% else %}Изменить этап {{ stage.sequence_no }}{% endif %}</h1><p>{{ project.name }} · {{ project.number }}</p></div></div>
+<form class="card" method="post" novalidate style="max-width:980px">
+  {% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.name full=1 %}
+    {% include "partials/field.html" with field=form.description full=1 %}
+    {% include "partials/field.html" with field=form.expected_result %}
+    {% include "partials/field.html" with field=form.executor_role %}
+    {% include "partials/field.html" with field=form.start_date %}
+    {% include "partials/field.html" with field=form.deadline %}
+    {% include "partials/field.html" with field=form.labor_hours %}
+    <div class="field">{% include "partials/check.html" with field=form.file_required %}
+      <div class="help">Снимите отметку для этапов без файла (например, «Согласование»): тогда зависимый этап откроется после смены статуса на «Принят».</div></div>
+    <div class="field full{% if form.dependencies.errors %} has-error{% endif %}">
+      <label>{{ form.dependencies.label }}</label>
+      <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">{% for cb in form.dependencies %}<label>{{ cb.tag }} {{ cb.choice_label }}</label>{% empty %}<span class="muted small">Других этапов в проекте пока нет — этап будет независимым.</span>{% endfor %}</div>
+      <div class="help">{{ form.dependencies.help_text }}</div>
+      {% for e in form.dependencies.errors %}<div class="errors">{{ e }}</div>{% endfor %}
+    </div>
+    {% if not is_new and stage.status != 'not_started' %}{% include "partials/field.html" with field=form.change_reason full=1 %}{% endif %}
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{% if is_new %}Добавить этап{% else %}Сохранить изменения{% endif %}</button>
+    <a class="btn" href="{% if is_new %}{% url 'project_detail' project.pk %}{% else %}{% url 'stage_detail' stage.pk %}{% endif %}">Отмена</a>
+  </div>
+</form>
+{% endblock %}

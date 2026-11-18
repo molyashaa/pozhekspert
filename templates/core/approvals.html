@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Пакеты согласования{% endblock %}
+{% block crumbs %}<b>Согласования</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Пакеты согласования</h1><p>Подготовка пакета документов, отправка, дата и статус внешнего согласования, полученные ответы.</p></div>
+  <div class="actions"><a class="btn" href="{% url 'remark_external' %}">Внешнее замечание</a><a class="btn btn-primary" href="{% url 'approval_create' %}">{% icon 'plus' %}Новый пакет</a></div></div>
+<div class="chips" style="margin-bottom:14px"><a class="chip {% if not status %}on{% endif %}" href="?">Все</a>{% for c, l in statuses %}<a class="chip {% if status == c %}on{% endif %}" href="?status={{ c }}">{{ l }}</a>{% endfor %}</div>
+<div class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Пакет</th><th>Проект</th><th>Согласующая организация</th><th>Документов</th><th>Отправлен</th><th>Ответ</th><th>Статус</th></tr></thead>
+  <tbody>{% for p in packages %}<tr class="clickable" data-href="{% url 'approval_edit' p.pk %}" tabindex="0"><td><b><a href="{% url 'approval_edit' p.pk %}">{{ p.title }}</a></b></td><td>{{ p.project.number }}<span class="sub">{{ p.project.name }}</span></td><td>{{ p.authority }}</td><td>{{ p.docs }}</td><td>{{ p.sent_date|short_date }}</td><td>{{ p.response_date|short_date }}</td><td>{% badge p.status p.get_status_display %}</td></tr>
+  {% empty %}<tr><td colspan="7"><div class="empty"><b>Пакетов пока нет</b><a class="btn btn-primary" href="{% url 'approval_create' %}" style="margin-top:10px">Создать пакет</a></div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

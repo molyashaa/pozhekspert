@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Поиск{% endblock %}
+{% block crumbs %}<b>Поиск</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Поиск{% if q %}: «{{ q }}»{% endif %}</h1><p>Поиск выполняется только по данным, доступным вашей роли.</p></div></div>
+{% if q|length < 2 %}<div class="card"><p class="muted">Введите не менее двух символов в строке поиска вверху страницы.</p></div>
+{% elif not total %}<div class="card"><div class="empty"><b>Ничего не найдено</b>Попробуйте другую формулировку или номер проекта.</div></div>
+{% else %}
+<div class="grid g3">
+  <div class="card"><h2 style="margin-bottom:10px">Проекты ({{ projects|length }})</h2>{% for p in projects %}<div class="version-row"><a href="{% url 'project_detail' p.pk %}"><b>{{ p.name }}</b></a><span class="muted small">{{ p.number }} · {{ p.client.name }}</span></div>{% empty %}<p class="muted small">Нет совпадений.</p>{% endfor %}</div>
+  <div class="card"><h2 style="margin-bottom:10px">Документы ({{ documents|length }})</h2>{% for d in documents %}<div class="version-row"><a href="{% url 'document_detail' d.pk %}"><b>{{ d.title }}</b></a><span class="muted small">{{ d.project.number }} · v{{ d.current_version_no }}</span></div>{% empty %}<p class="muted small">Нет совпадений.</p>{% endfor %}</div>
+  <div class="card"><h2 style="margin-bottom:10px">Замечания ({{ remarks|length }})</h2>{% for r in remarks %}<div class="version-row"><a href="{% url 'remark_detail' r.pk %}"><b>{{ r.number }}</b></a><span class="small">{{ r.text|truncatechars:70 }}</span></div>{% empty %}<p class="muted small">Нет совпадений.</p>{% endfor %}</div>
+</div>
+{% endif %}
+{% endblock %}

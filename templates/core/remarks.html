@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Замечания{% endblock %}
+{% block crumbs %}<b>Замечания</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Замечания</h1><p>Каждое замечание адресовано конкретному исполнителю и привязано к проекту, этапу, документу и версии.</p></div>
+  {% if can_external %}<div class="actions"><a class="btn" href="{% url 'remark_external' %}">{% icon 'plus' %}Замечание согласующей стороны</a></div>{% endif %}
+</div>
+<div class="chips" style="margin-bottom:14px">
+  <a class="chip {% if not f %}on{% endif %}" href="{% qs f='' page='' %}">Все</a>
+  {% for code, label in filters %}<a class="chip {% if f == code %}on{% endif %}" href="{% qs f=code page='' %}">{{ label }}</a>{% endfor %}
+</div>
+<div class="card flush">
+  <form class="filters" method="get">
+    <input type="hidden" name="f" value="{{ f }}">
+    <div class="search-in">{% icon 'search' %}<input class="input" type="search" name="q" value="{{ q }}" placeholder="Номер, текст или раздел"></div>
+    <select class="input" name="project" aria-label="Проект"><option value="">Все проекты</option>{% for p in projects %}<option value="{{ p.pk }}" {% if project == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.number }} · {{ p.name }}</option>{% endfor %}</select>
+    <select class="input" name="severity" aria-label="Критичность"><option value="">Любая критичность</option>{% for c, l in severities %}<option value="{{ c }}" {% if severity == c %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <button class="btn btn-primary" type="submit">Найти</button>
+    {% if filters_on %}<a class="btn" href="{% url 'remarks' %}">Очистить фильтры</a>{% endif %}
+  </form>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>№</th><th>Проект / этап</th><th>Документ, версия, раздел</th><th>Текст</th><th>Автор → исполнитель</th><th>Дата</th><th>Критичность</th><th>Срок</th><th>Статус</th></tr></thead>
+    <tbody>
+    {% for r in page %}
+      <tr class="clickable" data-href="{% url 'remark_detail' r.pk %}" tabindex="0">
+        <td><b><a href="{% url 'remark_detail' r.pk %}">{{ r.number }}</a></b>{% if r.source == 'external' %}<span class="sub">внешнее</span>{% endif %}</td>
+        <td>{{ r.project.number }}<span class="sub">{{ r.stage.sequence_no }}. {{ r.stage.name|truncatechars:30 }}</span></td>
+        <td class="small">{{ r.document.title|default:"—"|truncatechars:30 }}{% if r.version %}, v{{ r.version.version_no }}{% endif %}<span class="sub">{{ r.section }}</span></td>
+        <td>{{ r.text|truncatechars:80 }}</td>
+        <td class="small">{{ r.author.short_name }}<span class="sub">→ {{ r.assignee.short_name }}</span></td>
+        <td class="small">{{ r.created_at|short_date }}</td>
+        <td>{% badge r.severity r.get_severity_display %}</td>
+        <td>{% if r.due_date %}{% deadline r.due_date r.status %}{% else %}—{% endif %}</td>
+        <td>{% badge r.status r.get_status_display %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9"><div class="empty"><b>Замечаний не найдено</b>{% if filters_on %}<a class="btn" href="{% url 'remarks' %}" style="margin-top:10px">Очистить фильтры</a>{% else %}Здесь появятся замечания, доступные вашей роли.{% endif %}</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include "partials/pager.html" %}
+</div>
+{% endblock %}

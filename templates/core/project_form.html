@@ -1,0 +1,48 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{% if is_new %}Новый проект{% else %}Изменить проект{% endif %}{% endblock %}
+{% block crumbs %}<a href="{% url 'projects' %}">Проекты</a> / <b>{% if is_new %}Новый проект{% else %}{{ project.name }}{% endif %}</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if is_new %}Новый проект{% else %}Изменить проект {{ project.number }}{% endif %}</h1>
+  <p>{% if is_new %}После создания проект получит статус «Черновик» — затем добавьте этапы и запустите его.{% else %}Изменения названия, заказчика и сроков фиксируются в истории проекта.{% endif %}</p></div></div>
+<div class="grid g-main">
+  <form class="card" method="post" novalidate>
+    {% csrf_token %}
+    {% include "partials/form_errors.html" %}
+    <div class="form-grid">
+      {% include "partials/field.html" with field=form.name full=1 %}
+      <div class="full">
+        {% include "partials/field.html" with field=form.client %}
+        {% if not has_clients %}<div class="alert alert-warning">{% icon 'alert' %}<p>Справочник клиентов пуст.</p></div>{% endif %}
+        <p class="small muted" style="margin-top:-8px">Нет нужного заказчика?
+          {% if can_add_client %}<a href="{% url 'client_create' %}?next={{ request.path|urlencode }}">Добавить клиента в справочник</a>{% else %}Обратитесь к директору — справочник клиентов ведёт он.{% endif %}</p>
+      </div>
+      {% include "partials/field.html" with field=form.gip %}
+      {% include "partials/field.html" with field=form.approval_manager %}
+      {% include "partials/field.html" with field=form.start_date %}
+      {% include "partials/field.html" with field=form.planned_end_date %}
+      {% include "partials/field.html" with field=form.object_address full=1 %}
+      {% include "partials/field.html" with field=form.description full=1 %}
+      {% if not is_new and project.status != 'draft' %}{% include "partials/field.html" with field=form.change_reason full=1 %}{% endif %}
+    </div>
+    <div class="form-actions">
+      {% if is_new %}
+        <button class="btn btn-primary" type="submit">Создать проект</button>
+        <a class="btn" href="{% url 'projects' %}">Отмена</a>
+      {% else %}
+        <button class="btn btn-primary" type="submit">Сохранить изменения</button>
+        <a class="btn" href="{% url 'project_detail' project.pk %}">Отменить</a>
+      {% endif %}
+    </div>
+  </form>
+  <div class="card">
+    <h2 style="margin-bottom:10px">Правила заполнения</h2>
+    <div class="dl-list small">
+      <div><div class="k">Название</div><div class="v">от 3 до 200 символов</div></div>
+      <div><div class="k">Заказчик</div><div class="v">выбирается из справочника клиентов</div></div>
+      <div><div class="k">Сроки</div><div class="v">окончание не раньше даты начала</div></div>
+      <div><div class="k">Этапы</div><div class="v">формируются после создания: сроки, исполнители, проверяющие, зависимости</div></div>
+      <div><div class="k">Исходные документы</div><div class="v">загружаются на вкладке «Документы» карточки проекта</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

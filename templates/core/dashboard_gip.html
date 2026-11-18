@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Главная{% endblock %}
+{% block crumbs %}<b>Главная</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Мои проекты и контроль</h1><p>Этапы без исполнителя, сроки, результаты на проверке и возвраты</p></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'reviews' %}">Открыть очередь проверок</a>
+    <a class="btn" href="{% url 'tasks' %}?f=overdue">{% icon 'calendar' %}Календарь сроков</a>
+    <a class="btn" href="{% url 'tasks' %}?f=unassigned">Назначить исполнителя</a>
+    <a class="btn btn-primary" href="{% url 'project_create' %}">{% icon 'plus' %}Создать проект</a>
+  </div>
+</div>
+<div class="grid g4">
+  <a class="stat" href="{% url 'projects' %}"><div class="label">Активных проектов</div><div class="num">{{ cards.projects }}</div></a>
+  <a class="stat amber" href="{% url 'tasks' %}?f=unassigned"><div class="label">Этапов без исполнителя</div><div class="num">{{ cards.unassigned }}</div></a>
+  <a class="stat red" href="{% url 'tasks' %}?f=overdue"><div class="label">Просроченных этапов</div><div class="num">{{ cards.overdue }}</div></a>
+  <a class="stat blue" href="{% url 'reviews' %}"><div class="label">Результатов на проверке</div><div class="num">{{ cards.on_review }}</div></a>
+</div>
+{% if overloaded %}
+<div class="alert alert-warning" style="margin-top:20px">{% icon 'alert' %}<p><b>Предупреждение о перегрузке:</b>
+  {% for w in overloaded %}{{ w.user.short_name }} — {{ w.count }} {{ w.count|plural:"задача,задачи,задач" }}, ~{{ w.percent }}%{% if not forloop.last %}; {% endif %}{% endfor %}. Учитывайте при назначении.</p></div>
+{% endif %}
+<div class="grid g2" style="margin-top:20px">
+  <div class="card flush">
+    <div class="card-head"><h2>Мои проекты</h2><a class="small" href="{% url 'projects' %}">Все проекты</a></div>
+    <div class="table-wrap" style="margin-top:14px"><table class="table">
+      <thead><tr><th>Проект</th><th>Статус</th><th>Выполнение</th><th>Ближайший срок</th></tr></thead>
+      <tbody>{% for p in projects %}
+        <tr class="clickable" data-href="{% url 'project_detail' p.pk %}" tabindex="0">
+          <td><b><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a></b><span class="sub">{{ p.number }} · {{ p.client.name }}</span></td>
+          <td>{% badge p.status p.get_status_display %}</td>
+          <td style="min-width:120px"><div class="progress"><span style="width:{{ p.progress }}%"></span></div><span class="sub">{{ p.progress }}%</span></td>
+          <td>{% deadline p.nearest_deadline %}</td></tr>
+      {% empty %}<tr><td colspan="4"><div class="empty"><b>Проектов пока нет</b><a class="btn btn-primary" href="{% url 'project_create' %}">Создать проект</a></div></td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Этапы без исполнителя</h2></div>
+    {% for s in unassigned %}
+      <div class="item"><div class="item-head"><b>{{ s.name }}</b><span class="push">{% deadline s.deadline %}</span></div>
+        <div class="meta">{{ s.project.name }} · этап {{ s.sequence_no }}</div>
+        <div style="margin-top:8px"><a class="btn btn-sm btn-primary" href="{% url 'project_detail' s.project_id %}?tab=stages&assign={{ s.pk }}">Назначить</a></div></div>
+    {% empty %}<div class="muted">Все этапы распределены.</div>{% endfor %}
+  </div>
+</div>
+<div class="grid g3" style="margin-top:20px">
+  <div class="card"><div class="card-head"><h2>Сроки ≤ 7 дней и просрочки</h2></div>
+    <div class="feed">{% for s in deadlines %}<div><span class="t">{% deadline s.deadline %}</span><span><a href="{% url 'stage_detail' s.pk %}">{{ s.name }}</a><span class="reason">{{ s.project.number }} · {{ s.executor.short_name|default:"не назначен" }}</span></span></div>{% empty %}<div class="muted">Близких сроков нет.</div>{% endfor %}</div></div>
+  <div class="card"><div class="card-head"><h2>На проверке</h2></div>
+    <div class="feed">{% for s in on_review %}<div><span><a href="{% url 'review_detail' s.pk %}">{{ s.name }}</a><span class="reason">{{ s.project.number }} · проверяет {{ s.reviewer.short_name }}</span></span><span style="margin-left:auto">{% badge 'on_review' 'Ожидает проверки' %}</span></div>{% empty %}<div class="muted">Нет результатов на проверке.</div>{% endfor %}</div></div>
+  <div class="card"><div class="card-head"><h2>Возвраты с замечаниями</h2></div>
+    <div class="feed">{% for s in returns %}<div><span><a href="{% url 'stage_detail' s.pk %}">{{ s.name }}</a><span class="reason">{{ s.project.number }} · {{ s.executor.short_name }}</span></span><span style="margin-left:auto">{% badge 'rework' 'На доработке' %}</span></div>{% empty %}<div class="muted">Возвратов нет.</div>{% endfor %}</div></div>
+</div>
+{% endblock %}

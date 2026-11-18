@@ -1,0 +1,170 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ stage.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'projects' %}">Проекты</a> / <a href="{% url 'project_detail' project.pk %}">{{ project.name }}</a> / <b>{{ stage.name }}</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="row"><h1>{{ stage.name }}</h1>{% badge stage.status stage.get_status_display %}</div>
+    <p>Этап {{ stage.sequence_no }} · {{ project.name }} · {{ project.number }}</p>
+  </div>
+  <div class="actions">
+    {% if stage.status == 'on_review' and stage.reviewer_id == user.id %}<a class="btn btn-primary" href="{% url 'review_detail' stage.pk %}">Открыть проверку</a>{% endif %}
+    {% if stage.status == 'on_review' and stage.reviewer_id != user.id %}<a class="btn" href="{% url 'review_detail' stage.pk %}">Результат на проверке</a>{% endif %}
+    {% if manage %}<a class="btn" href="{% url 'stage_edit' stage.pk %}">{% icon 'edit' 16 %}Изменить этап</a>
+      {% if stage.status != 'accepted' %}<a class="btn" href="{% url 'project_detail' project.pk %}?tab=stages&assign={{ stage.pk }}">Назначить исполнителя</a>{% endif %}{% endif %}
+  </div>
+</div>
+
+{% if stage.status == 'rework' %}<div class="alert alert-warning">{% icon 'alert' %}<p><b>Результат возвращён на доработку.</b> Исправьте замечания, загрузите новую версию с комментарием и снова передайте на проверку.{% if stage.is_overdue %} Срок этапа просрочен.{% endif %}</p></div>
+{% elif stage.status == 'blocked' %}<div class="alert alert-info">{% icon 'lock' %}<p><b>Этап заблокирован.</b> {{ stage.block_reason }}. Работать с результатом можно после принятия предыдущих этапов.</p></div>
+{% elif stage.is_overdue %}<div class="alert alert-error">{% icon 'alert' %}<p><b>Срок этапа просрочен.</b> Сообщите ГИПу, если нужен перенос срока.</p></div>
+{% elif stage.status == 'not_started' %}<div class="alert alert-info">{% icon 'info' %}<p>Проект ещё в статусе «Черновик» — этап откроется после запуска проекта.</p></div>{% endif %}
+
+<div class="grid g-main">
+  <div class="stack">
+    {% if open_remarks %}
+    <div class="card">
+      <div class="card-head"><h2>Замечания к результату</h2><span class="muted small">{{ open_remarks|length }} {{ open_remarks|length|plural:"открытое,открытых,открытых" }}</span></div>
+      {% for r in open_remarks %}
+        <div class="item">
+          <div class="item-head"><a href="{% url 'remark_detail' r.pk %}"><b>{{ r.number }}</b></a>{% badge r.severity r.get_severity_display %}<span class="push">{% badge r.status r.get_status_display %}</span></div>
+          <div>{{ r.text }}</div>
+          <div class="meta">{% if r.document %}{{ r.document.title }}, {% endif %}{{ r.section }}{% if r.version %} · версия {{ r.version.version_no }}{% endif %} · автор: {{ r.author.short_name }}{% if r.due_date %} · срок: {{ r.due_date|short_date }}{% endif %}{% if r.source == 'external' %} · согласующая сторона{% endif %}</div>
+        </div>
+      {% endfor %}
+      <p class="small muted" style="margin-top:12px">После передачи новой версии статус замечаний изменится на «Исправлено, ожидает проверки». Закрывает замечание только проверяющий.</p>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h2>Результат этапа</h2><span class="muted small">{{ ALLOWED_EXT|join:", "|upper }} до {{ MAX_UPLOAD_MB }} МБ</span></div>
+      {% if stage.expected_result %}<p class="small muted">Ожидаемый результат: {{ stage.expected_result }}</p>{% endif %}
+      {% for d in documents %}
+        <div class="item">
+          <div class="item-head"><a href="{% url 'document_detail' d.pk %}"><b>{{ d.title }}</b></a><span class="tag">{{ d.get_doc_type_display }}</span><span class="push muted small">актуальная версия {{ d.current_version_no }}</span></div>
+          {% for v in d.versions.all %}
+            <div class="version-row"><span class="vnum">{{ v.version_no }}</span>
+              <span style="flex:1;min-width:200px"><a href="{% url 'version_download' v.pk %}">{{ v.original_name }}</a><span class="reason">{{ v.size_display }} · {{ v.uploaded_by.short_name }} · {{ v.uploaded_at|when }}{% if v.comment %} · «{{ v.comment }}»{% endif %}</span></span>
+              {% badge v.review_status v.get_review_status_display %}</div>
+          {% endfor %}
+          {% if can_upload %}
+          <details style="margin-top:10px"><summary class="link-btn">{% icon 'upload' 16 %} Загрузить новую версию</summary>
+            <form method="post" action="{% url 'document_new_version' d.pk %}" enctype="multipart/form-data" data-upload style="margin-top:12px">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+              <div class="dropzone">Перетащите файл сюда или выберите его<input type="file" name="file" required accept=".pdf,.docx,.xlsx,.dwg,.dxf"><div class="file-msg"></div></div>
+              <div class="field" style="margin-top:12px"><label>Комментарий к версии<span class="req">*</span></label><textarea class="input textarea" name="comment" rows="2" required placeholder="Что исправлено, например: «Добавлена категория помещения по замечанию Р-031»"></textarea></div>
+              <button class="btn btn-primary" type="submit" data-upload-submit>Загрузить версию {{ d.current_version_no|add:1 }}</button>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+      {% empty %}
+        <div class="empty" style="padding:16px"><b>Результат ещё не загружен</b>{% if stage.file_required %}Для этого этапа загрузка файла обязательна.{% else %}Для этапа файл не обязателен.{% endif %}</div>
+      {% endfor %}
+      {% if can_upload %}
+      <details style="margin-top:14px" {% if not documents %}open{% endif %}><summary class="link-btn">{% icon 'plus' 16 %} Загрузить новый документ</summary>
+        <form method="post" action="{% url 'document_upload' %}" enctype="multipart/form-data" data-upload style="margin-top:12px">
+          {% csrf_token %}<input type="hidden" name="project" value="{{ project.pk }}"><input type="hidden" name="stage" value="{{ stage.pk }}"><input type="hidden" name="next" value="{{ request.path }}">
+          <div class="form-grid">
+            <div class="field"><label>Название документа<span class="req">*</span></label><input class="input" name="title" required maxlength="255" value="{{ stage.expected_result|default:stage.name }}"></div>
+            <div class="field"><label>Тип документа<span class="req">*</span></label><select class="input" name="doc_type">
+              <option value="scheme">Схема</option><option value="drawing">Чертёж / план</option><option value="calculation">Расчёт</option><option value="specification">Спецификация</option><option value="explanatory">Пояснительная записка</option><option value="estimate">Смета</option><option value="letter">Письмо / ответ</option><option value="other">Прочее</option></select></div>
+          </div>
+          <div class="dropzone">Перетащите файл сюда или выберите его<input type="file" name="file" required accept=".pdf,.docx,.xlsx,.dwg,.dxf"><div class="file-msg"></div></div>
+          <div class="field" style="margin-top:12px"><label>Комментарий<span class="req">*</span></label><textarea class="input textarea" name="comment" rows="2" required placeholder="Что содержит файл"></textarea></div>
+          <button class="btn btn-primary" type="submit" data-upload-submit>{% icon 'upload' 16 %}Загрузить результат</button>
+        </form>
+      </details>
+      {% elif stage.status == 'on_review' %}<p class="small muted" style="margin-top:12px">Версия передана на проверку и зафиксирована. Исправление можно будет загрузить новой версией после решения проверяющего.</p>{% endif %}
+    </div>
+
+    {% if is_executor %}
+    <div class="card">
+      <div class="row between">
+        <div><h2>Передача на проверку</h2>
+          <p class="small muted" style="margin:4px 0 0">{% if submit_reason %}{{ submit_reason }}{% else %}Будут зафиксированы: {% for v in drafts %}{{ v.document.title }} v{{ v.version_no }}{% if not forloop.last %}, {% endif %}{% empty %}результат без файла{% endfor %}. Проверяющий: {{ stage.reviewer.short_name }}.{% endif %}</p></div>
+        <form method="post" action="{% url 'stage_submit' stage.pk %}" data-confirm="Версия будет зафиксирована и передана проверяющему {{ stage.reviewer.short_name|default:'' }}. Изменить её после отправки нельзя — только загрузить новую." data-confirm-title="Передать на проверку?">{% csrf_token %}
+          <button class="btn btn-primary" type="submit" {% if submit_reason %}disabled title="{{ submit_reason }}"{% endif %}>Передать на проверку</button></form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h2>Задачи этапа</h2></div>
+      {% for t in tasks %}
+        <div class="version-row">
+          <span style="flex:1;min-width:200px"><b>{{ t.title }}</b><span class="reason">{{ t.executor.short_name }} · срок {{ t.deadline|short_date }}{% if t.labor_hours %} · {{ t.labor_hours }} ч{% endif %}</span></span>
+          {% badge t.status t.get_status_display %}
+          {% if t.executor_id == user.id or manage %}
+          <form method="post" action="{% url 'task_status' t.pk %}" class="inline">{% csrf_token %}
+            <select class="input" name="status" style="height:32px;width:auto" onchange="this.form.submit()" aria-label="Статус задачи">{% for c, l in t.STATUS_CHOICES %}<option value="{{ c }}" {% if t.status == c %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></form>{% endif %}
+        </div>
+      {% empty %}<p class="muted small">Этап выполняется целиком назначенным исполнителем. При необходимости ГИП разбивает его на задачи.</p>{% endfor %}
+      {% if manage and stage.status != 'accepted' %}
+      <details style="margin-top:12px"><summary class="link-btn">{% icon 'plus' 16 %} Добавить задачу</summary>
+        <form method="post" action="{% url 'task_create' stage.pk %}" style="margin-top:12px">{% csrf_token %}
+          <div class="form-grid">
+            {% include "partials/field.html" with field=task_form.title full=1 %}
+            {% include "partials/field.html" with field=task_form.executor %}
+            {% include "partials/field.html" with field=task_form.deadline %}
+            {% include "partials/field.html" with field=task_form.labor_hours %}
+            {% include "partials/field.html" with field=task_form.priority %}
+          </div>
+          <button class="btn btn-primary" type="submit">Добавить задачу</button>
+        </form>
+      </details>{% endif %}
+    </div>
+
+    {% if reviews %}
+    <div class="card"><div class="card-head"><h2>История проверок</h2></div>
+      {% for r in reviews %}<div class="version-row"><span style="flex:1">{{ r.created_at|date:"d.m.Y H:i" }} · {{ r.reviewer.short_name }}{% for v in r.versions.all %} · {{ v.document.title }} v{{ v.version_no }}{% endfor %}{% if r.comment %}<span class="reason">{{ r.comment }}</span>{% endif %}</span>{% badge r.decision r.get_decision_display %}</div>{% endfor %}
+    </div>{% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <h2 style="margin-bottom:6px">Сведения об этапе</h2>
+      <div class="dl-list">
+        <div><div class="k">Исполнитель</div><div class="v">{{ stage.executor.short_name|default:"Не назначен" }}{% if stage.executor_role %} <span class="muted small">({{ stage.executor_role.name }})</span>{% endif %}</div></div>
+        <div><div class="k">Проверяющий</div><div class="v">{{ stage.reviewer.short_name|default:"Не назначен" }}</div></div>
+        <div><div class="k">Плановые сроки</div><div class="v">{{ stage.start_date|date:"d.m.Y"|default:"—" }} – {% deadline stage.deadline stage.status %}</div></div>
+        <div><div class="k">Фактически</div><div class="v">{{ stage.actual_start|date:"d.m.Y"|default:"не начат" }}{% if stage.actual_end %} – {{ stage.actual_end|date:"d.m.Y" }}{% endif %}</div></div>
+        {% if stage.labor_hours %}<div><div class="k">Плановая трудоёмкость</div><div class="v">{{ stage.labor_hours }} ч</div></div>{% endif %}
+        <div><div class="k">Зависит от</div><div class="v">{% for p in prereqs %}<a href="{% url 'stage_detail' p.pk %}">Этап {{ p.sequence_no }}</a> {% badge p.status p.get_status_display %}<br>{% empty %}Нет (независимый этап){% endfor %}</div></div>
+        {% if dependents %}<div><div class="k">От него зависят</div><div class="v">{% for d in dependents %}<a href="{% url 'stage_detail' d.pk %}">Этап {{ d.sequence_no }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</div></div>{% endif %}
+        <div><div class="k">Файл результата</div><div class="v">{% if stage.file_required %}обязателен{% else %}не обязателен{% endif %}</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px">Исходные материалы</h2>
+      {% for d in project.documents.all %}{% if not d.stage_id %}<div class="version-row"><span class="vnum">v{{ d.current_version_no }}</span><a href="{% url 'document_detail' d.pk %}">{{ d.title }}</a></div>{% endif %}{% empty %}<p class="muted small">Исходных материалов нет.</p>{% endfor %}
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:6px">Нужна подсказка?</h2>
+      <p class="small muted">ИИ-помощник найдёт похожие замечания из архива и покажет, как их устраняли раньше.</p>
+      <a class="btn btn-block" href="{% url 'stage_hint' stage.pk %}?return_to={{ request.path|urlencode }}">{% icon 'sparkle' %}Открыть ИИ-помощник</a>
+    </div>
+    {% if manage %}
+    <div class="card">
+      <h2 style="margin-bottom:10px">Управление (ГИП)</h2>
+      {% if stage.status != 'accepted' %}
+      <form method="post" action="{% url 'stage_deadline' stage.pk %}">{% csrf_token %}
+        <div class="field"><label>Изменить срок<span class="req">*</span></label><input class="input" type="date" name="deadline" required value="{{ stage.deadline|date:'Y-m-d' }}"></div>
+        <div class="field"><label>Причина переноса<span class="req">*</span></label><textarea class="input textarea" name="reason" rows="2" required></textarea></div>
+        <button class="btn btn-block" type="submit">Изменить срок</button>
+      </form>
+      {% else %}
+      <form method="post" action="{% url 'stage_cancel' stage.pk %}" data-confirm="Этап вернётся в статус «На доработке», зависимые этапы будут автоматически заблокированы до повторной успешной проверки." data-confirm-title="Отменить приёмку?">{% csrf_token %}
+        <div class="field"><label>Причина отмены приёмки (критическая ошибка)<span class="req">*</span></label><textarea class="input textarea" name="reason" rows="2" required></textarea></div>
+        <button class="btn btn-danger btn-block" type="submit">Отменить приёмку</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if assignments %}
+    <div class="card"><h2 style="margin-bottom:8px">История назначений</h2>
+      <div class="feed">{% for a in assignments %}<div><span class="t">{{ a.created_at|short_date }}</span><span>{{ a.get_role_in_task_display }}: {% if a.previous_user %}{{ a.previous_user.short_name }} → {% endif %}<b>{{ a.user.short_name }}</b>{% if a.task %} (задача «{{ a.task.title }}»){% endif %}<span class="reason">назначил {{ a.assigned_by.short_name }}{% if a.reason %} · причина: {{ a.reason }}{% endif %}</span></span></div>{% endfor %}</div>
+    </div>{% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Главная{% endblock %}
+{% block crumbs %}<b>Главная</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Добрый день, {{ user.full_name|default:user.short_name }}</h1><p>Общая картина по проектам компании на {% now "j E Y" %}</p></div>
+  <div class="actions"><a class="btn" href="{% url 'projects' %}">Все проекты</a><a class="btn btn-primary" href="{% url 'reports' %}">{% icon 'chart' %}Открыть отчёты</a></div>
+</div>
+<div class="grid g5">
+  <a class="stat" href="{% url 'projects' %}"><div class="label">Всего проектов</div><div class="num">{{ cards.total }}</div></a>
+  <a class="stat blue" href="{% url 'projects' %}?status=in_progress"><div class="label">В работе</div><div class="num">{{ cards.in_work }}</div></a>
+  <a class="stat red" href="{% url 'projects' %}?overdue=1"><div class="label">Просрочено</div><div class="num">{{ cards.overdue }}</div></a>
+  <a class="stat amber" href="{% url 'reviews' %}"><div class="label">Ожидают решения</div><div class="num">{{ cards.waiting }}</div></a>
+  <a class="stat green" href="{% url 'projects' %}?status=completed"><div class="label">Завершено</div><div class="num">{{ cards.completed }}</div></a>
+</div>
+<div class="grid g2" style="margin-top:20px">
+  <div class="card flush">
+    <div class="card-head"><h2>Проекты с риском срыва сроков</h2></div>
+    <div class="table-wrap" style="margin-top:14px">
+      <table class="table">
+        <thead><tr><th>Проект</th><th>ГИП</th><th>Ближайший срок</th><th>Статус</th></tr></thead>
+        <tbody>
+        {% for p in risk_projects %}
+          <tr class="clickable" data-href="{% url 'project_detail' p.pk %}" tabindex="0">
+            <td><b><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a></b><span class="sub">{{ p.number }}</span></td>
+            <td>{{ p.gip.short_name }}</td>
+            <td>{% deadline p.nearest_deadline %}</td>
+            <td>{% if p.is_overdue %}{% badge 'critical' 'Просрочен' %}{% else %}{% badge 'on_review' 'Срок близко' %}{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4"><div class="empty"><b>Рисков по срокам нет</b>Все активные проекты укладываются в график.</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Загрузка сотрудников</h2><span class="muted small">оценка приблизительная</span></div>
+    {% for w in workload %}
+      <div class="load-row">
+        <div><b>{{ w.user.short_name }}</b><span class="sub muted small" style="display:block">{{ w.user.role.name }}</span></div>
+        <div class="progress{% if w.overloaded %} red{% endif %}"><span style="width:{{ w.bar }}%"></span></div>
+        <div class="txt{% if w.overloaded %} red{% endif %}">{{ w.count }} {{ w.count|plural:"задача,задачи,задач" }}{% if w.overloaded %}, перегрузка{% else %} · ~{{ w.percent }}%{% endif %}</div>
+      </div>
+    {% empty %}<div class="empty">Нет активных исполнителей.</div>{% endfor %}
+  </div>
+</div>
+<div class="grid g2" style="margin-top:20px">
+  <div class="card">
+    <div class="card-head"><h2>Ближайшие сроки</h2><a href="{% url 'tasks' %}" class="small">Все этапы</a></div>
+    <div class="feed">
+      {% for s in deadlines %}
+        <div><span class="t">{% deadline s.deadline %}</span><span><a href="{% url 'stage_detail' s.pk %}">{{ s.name }}</a><span class="reason">{{ s.project.name }} · {{ s.executor.short_name|default:"исполнитель не назначен" }}</span></span><span style="margin-left:auto">{% badge s.status s.get_status_display %}</span></div>
+      {% empty %}<div class="muted">Нет активных этапов со сроками.</div>{% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Последние события</h2><a href="{% url 'audit' %}" class="small">Журнал аудита</a></div>
+    <div class="feed">
+      {% for e in events %}
+        <div><span class="t">{{ e.created_at|when }}</span><span>{{ e.description }}<span class="reason">{{ e.user.short_name|default:"Система" }}{% if e.project %} · {{ e.project.number }}{% endif %}</span></span></div>
+      {% empty %}<div class="muted">Событий пока нет.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

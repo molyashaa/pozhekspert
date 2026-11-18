@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Отчёты{% endblock %}
+{% block crumbs %}<b>Отчёты</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Отчёты и статистика</h1><p>Статистика проектов, этапов, сроков, возвратов и загрузки{% if user.is_gip %} по вашим проектам{% endif %}. Загрузка — приблизительная оценка.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'reports_export' %}">{% icon 'download' %}Выгрузить CSV (Excel)</a></div></div>
+<div class="grid g4">
+  <div class="stat"><div class="label">Этапов всего</div><div class="num">{{ stages_total }}</div></div>
+  <div class="stat red"><div class="label">Просроченных этапов</div><div class="num">{{ overdue_stages|length }}</div></div>
+  <div class="stat amber"><div class="label">Возвратов на доработку</div><div class="num">{{ returns }}</div><div class="small muted">{{ return_rate }}% от всех решений</div></div>
+  <div class="stat blue"><div class="label">Открытых замечаний</div><div class="num">{{ remarks_open }}</div><div class="small muted">из {{ remarks_total }}</div></div>
+</div>
+<div class="grid g3" style="margin-top:20px">
+  <div class="card"><h2 style="margin-bottom:12px">Проекты по статусам</h2>
+    {% for label, n, code in by_status %}<div class="bar-row"><span>{% badge code label %}</span><div class="progress"><span style="width:{% widthratio n max_status 100 %}%"></span></div><b>{{ n }}</b></div>{% endfor %}</div>
+  <div class="card"><h2 style="margin-bottom:12px">Этапы по статусам</h2>
+    {% for label, n, code in stage_status %}<div class="bar-row"><span>{% badge code label %}</span><div class="progress"><span style="width:{% widthratio n max_stage 100 %}%"></span></div><b>{{ n }}</b></div>{% endfor %}</div>
+  <div class="card"><h2 style="margin-bottom:12px">Замечания по критичности</h2>
+    {% for label, n, code in severity_rows %}<div class="bar-row"><span>{% badge code label %}</span><div class="progress{% if code == 'critical' %} red{% endif %}"><span style="width:{% widthratio n remarks_total|default:1 100 %}%"></span></div><b>{{ n }}</b></div>{% endfor %}</div>
+</div>
+<div class="grid g2" style="margin-top:20px">
+  <div class="card flush"><div class="card-head"><h2>Просроченные этапы</h2></div>
+    <div class="table-wrap" style="margin-top:14px"><table class="table"><thead><tr><th>Этап</th><th>Проект</th><th>Исполнитель</th><th>Срок</th><th>Статус</th></tr></thead>
+    <tbody>{% for s in overdue_stages %}<tr class="clickable" data-href="{% url 'stage_detail' s.pk %}"><td>{{ s.sequence_no }}. {{ s.name }}</td><td>{{ s.project.number }}</td><td>{{ s.executor.short_name|default:"—" }}</td><td>{% deadline s.deadline %}</td><td>{% badge s.status s.get_status_display %}</td></tr>
+    {% empty %}<tr><td colspan="5"><div class="empty">Просроченных этапов нет.</div></td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><div class="card-head"><h2>Загрузка сотрудников</h2><span class="muted small">приблизительно, 30 дней</span></div>
+    {% for w in workload %}<div class="load-row"><div><b>{{ w.user.short_name }}</b><span class="muted small" style="display:block">{{ w.user.role.name }}</span></div><div class="progress{% if w.overloaded %} red{% endif %}"><span style="width:{{ w.bar }}%"></span></div><div class="txt{% if w.overloaded %} red{% endif %}">{{ w.count }} · ~{{ w.percent }}%{% if w.overloaded %} · перегрузка{% endif %}</div></div>{% endfor %}</div>
+</div>
+<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Сводка по проектам</h2></div>
+  <div class="table-wrap" style="margin-top:14px"><table class="table"><thead><tr><th>Номер</th><th>Проект</th><th>Заказчик</th><th>ГИП</th><th>Статус</th><th>Выполнение</th><th>Ближайший срок</th></tr></thead>
+  <tbody>{% for p in projects %}<tr class="clickable" data-href="{% url 'project_detail' p.pk %}"><td class="muted">{{ p.number }}</td><td><b>{{ p.name }}</b></td><td>{{ p.client.name }}</td><td>{{ p.gip.short_name }}</td><td>{% badge p.status p.get_status_display %}</td><td>{{ p.progress }}%</td><td>{% deadline p.nearest_deadline %}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

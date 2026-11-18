@@ -1,0 +1,11 @@
+{% if page.paginator.num_pages > 1 or page.paginator.count %}
+<div class="pager">
+  <span class="info">Показано {{ page.start_index }}–{{ page.end_index }} из {{ page.paginator.count }}</span>
+  {% if page.has_previous %}<a href="?{% if page.querystring %}{{ page.querystring }}&{% endif %}page={{ page.previous_page_number }}" aria-label="Предыдущая страница">‹</a>{% endif %}
+  {% for n in page.paginator.page_range %}
+    {% if n == page.number %}<span class="cur">{{ n }}</span>
+    {% elif n > page.number|add:'-3' and n < page.number|add:'3' %}<a href="?{% if page.querystring %}{{ page.querystring }}&{% endif %}page={{ n }}">{{ n }}</a>{% endif %}
+  {% endfor %}
+  {% if page.has_next %}<a href="?{% if page.querystring %}{{ page.querystring }}&{% endif %}page={{ page.next_page_number }}" aria-label="Следующая страница">›</a>{% endif %}
+</div>
+{% endif %}

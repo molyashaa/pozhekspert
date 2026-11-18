@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Вход в систему{% endblock %}
+{% block body %}
+<div class="login">
+  <section class="login-left">
+    <div class="brand"><span class="logo">{% icon 'flame' 22 %}</span>ПожЭксперт+</div>
+    <h1>Управление проектированием систем пожарной безопасности</h1>
+    <p class="lead">Единое рабочее пространство для проектов, документов, проверок и замечаний.</p>
+    <div class="feature"><span class="fi">{% icon 'folder' %}</span><div><b>Этапы, задачи и сроки</b><span>Весь проект и ответственные в одном месте</span></div></div>
+    <div class="feature"><span class="fi">{% icon 'file' %}</span><div><b>Версии документов</b><span>Прежние файлы не перезаписываются</span></div></div>
+    <div class="feature"><span class="fi">{% icon 'clipboard' %}</span><div><b>Поэтапная проверка</b><span>Замечания привязаны к версии и исполнителю</span></div></div>
+    <div class="feature"><span class="fi">{% icon 'sparkle' %}</span><div><b>ИИ-помощник</b><span>Поиск похожих замечаний в архиве компании</span></div></div>
+    <div class="foot">ООО «ПожЭксперт+» · учебный прототип</div>
+  </section>
+  <section class="login-right">
+    <div class="login-card">
+      <h2>Вход в систему</h2>
+      <p class="sub">Используйте рабочую электронную почту и пароль, выданные директором.</p>
+      {% include "partials/messages.html" %}
+      {% if error %}<div class="alert alert-error" role="alert">{% icon 'alert' %}<p>{{ error }}</p></div>{% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_email">Рабочая электронная почта</label>
+          {{ form.email }}
+        </div>
+        <div class="field">
+          <label for="id_password">Пароль</label>
+          <div class="pw-wrap">{{ form.password }}<button type="button" data-toggle-password="id_password">Показать</button></div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Войти</button>
+      </form>
+      <div class="center"><a href="{% url 'login_help' %}" style="text-decoration:underline">Не удаётся войти?</a></div>
+      <div class="note">{% icon 'info' %}<span>Самостоятельная регистрация недоступна. Учётную запись сотруднику создаёт директор.</span></div>
+      {% if demo_accounts %}
+      <details class="demo-accounts" open>
+        <summary>Демо-входы для защиты проекта (включены в .env)</summary>
+        <table>
+          {% for a in demo_accounts %}
+          <tr><td>{{ a.role.name }}</td><td>{{ a.short_name }}</td>
+            <td style="text-align:right"><button type="button" class="link-btn" data-demo-login="{{ a.email }}" data-demo-pass="{{ demo_password }}">Войти</button></td></tr>
+          {% endfor %}
+        </table>
+      </details>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

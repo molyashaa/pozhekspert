@@ -1,0 +1,45 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ doc.title }}{% endblock %}
+{% block crumbs %}<a href="{% url 'documents' %}">Документы</a> / <b>{{ doc.title }}</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="row"><h1>{{ doc.title }}</h1><span class="tag">{{ doc.get_doc_type_display }}</span></div>
+    <p><a href="{% url 'project_detail' doc.project_id %}">{{ doc.project.name }}</a> · {{ doc.project.number }}{% if doc.stage %} · <a href="{% url 'stage_detail' doc.stage_id %}">этап {{ doc.stage.sequence_no }} «{{ doc.stage.name }}»</a>{% else %} · исходные материалы проекта{% endif %}</p></div>
+  {% if latest %}<div class="actions">{% if latest.is_pdf %}<a class="btn" href="{% url 'version_download' latest.pk %}?inline=1" target="_blank" rel="noopener">{% icon 'eye' %}Открыть</a>{% endif %}<a class="btn btn-primary" href="{% url 'version_download' latest.pk %}">{% icon 'download' %}Скачать версию {{ latest.version_no }}</a></div>{% endif %}
+</div>
+<div class="grid g-main">
+  <div class="stack">
+    {% if preview %}<div class="card"><iframe class="pdf-frame" src="{% url 'version_download' preview.pk %}?inline=1" title="Просмотр PDF"></iframe></div>
+    {% elif latest %}<div class="note">{% icon 'info' %}<span>Формат {{ latest.extension|upper }} не просматривается в браузере. Скачайте файл и откройте его в соответствующей программе{% if latest.extension == 'dwg' or latest.extension == 'dxf' %} (AutoCAD, nanoCAD или другой CAD-просмотрщик){% endif %}.</span></div>{% endif %}
+    <div class="card">
+      <div class="card-head"><h2>История версий</h2><span class="muted small">решение «Принято» относится к конкретной версии</span></div>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Версия</th><th>Файл</th><th>Автор</th><th>Дата</th><th>Комментарий</th><th>Статус проверки</th></tr></thead>
+        <tbody>{% for v in versions %}
+          <tr><td><span class="vnum">{{ v.version_no }}</span></td>
+            <td><a href="{% url 'version_download' v.pk %}">{{ v.original_name }}</a><span class="sub">{{ v.extension|upper }} · {{ v.size_display }}</span></td>
+            <td>{{ v.uploaded_by.short_name }}</td><td class="small">{{ v.uploaded_at|date:"d.m.Y H:i" }}</td><td class="small">{{ v.comment|default:"—" }}</td>
+            <td>{% badge v.review_status v.get_review_status_display %}{% for r in v.reviews.all %}<span class="reason">{{ r.get_decision_display }}: {{ r.reviewer.short_name }}, {{ r.created_at|date:"d.m.Y" }}</span>{% endfor %}
+              {% if v.remarks.all %}<span class="reason">замечаний: {{ v.remarks.all|length }}</span>{% endif %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="margin-bottom:10px">Загрузить новую версию</h2>
+    {% if can_new %}
+    <form method="post" action="{% url 'document_new_version' doc.pk %}" enctype="multipart/form-data" data-upload>
+      {% csrf_token %}
+      <div class="dropzone">Перетащите файл сюда или выберите его<input type="file" name="file" required accept=".pdf,.docx,.xlsx,.dwg,.dxf"><div class="file-msg"></div></div>
+      <div class="field" style="margin-top:12px"><label>Комментарий к версии<span class="req">*</span></label><textarea class="input textarea" name="comment" rows="3" required placeholder="Что изменено в этой версии"></textarea></div>
+      <button class="btn btn-primary btn-block" type="submit" data-upload-submit>Загрузить версию {{ doc.current_version_no|add:1 }}</button>
+      <p class="small muted" style="margin-top:8px">Версия {{ doc.current_version_no }} и более ранние останутся в истории.</p>
+    </form>
+    {% else %}<p class="muted small">{{ reason }}</p><button class="btn btn-block" disabled>Загрузить новую версию</button>{% endif %}
+    <div class="dl-list" style="margin-top:16px">
+      <div><div class="k">Создан</div><div class="v">{{ doc.created_by.short_name }}, {{ doc.created_at|date:"d.m.Y H:i" }}</div></div>
+      <div><div class="k">Актуальная версия</div><div class="v">{{ doc.current_version_no }}</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

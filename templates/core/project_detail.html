@@ -1,0 +1,178 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'projects' %}">Проекты</a> / <b>{{ project.name }}</b>{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="page-head" style="margin-bottom:18px">
+    <div>
+      <div class="row"><h1>{{ project.name }}</h1>{% badge project.status project.get_status_display %}{% if project.is_demo %}<span class="tag">тестовая запись</span>{% endif %}</div>
+      <p>Проект {{ project.number }}{% if project.object_address %} · {{ project.object_address }}{% endif %}</p>
+    </div>
+    {% if manage %}
+    <div class="actions">
+      {% if project.status == 'draft' %}
+        <form method="post" action="{% url 'project_status' project.pk %}" class="inline" data-confirm="Проект перейдёт в статус «В работе», этапы без зависимостей откроются, исполнители получат уведомления." data-confirm-title="Запустить проект?">{% csrf_token %}<input type="hidden" name="status" value="in_progress"><button class="btn btn-success" type="submit">Запустить проект</button></form>
+      {% elif project.status == 'in_progress' and counts.total and counts.accepted == counts.total %}
+        <form method="post" action="{% url 'project_status' project.pk %}" class="inline" data-confirm="Все этапы приняты. Проект будет переведён в статус «Завершён»; документы, замечания и история сохраняются.">{% csrf_token %}<input type="hidden" name="status" value="completed"><button class="btn btn-success" type="submit">Завершить проект</button></form>
+      {% elif project.status == 'approval' %}
+        <form method="post" action="{% url 'project_status' project.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="status" value="in_progress"><button class="btn" type="submit">Вернуть в работу</button></form>
+        {% if counts.accepted == counts.total %}<form method="post" action="{% url 'project_status' project.pk %}" class="inline" data-confirm="Проект будет завершён.">{% csrf_token %}<input type="hidden" name="status" value="completed"><button class="btn btn-success" type="submit">Завершить проект</button></form>{% endif %}
+      {% elif project.status == 'completed' %}
+        <form method="post" action="{% url 'project_status' project.pk %}" class="inline" data-confirm="Проект будет переведён в архив. Документы, замечания и история сохраняются.">{% csrf_token %}<input type="hidden" name="status" value="archived"><button class="btn" type="submit">{% icon 'archive' %}В архив</button></form>
+      {% endif %}
+      <a class="btn" href="{% url 'project_edit' project.pk %}">Изменить проект</a>
+      {% if project.status != 'archived' and project.status != 'completed' %}<a class="btn btn-primary" href="{% url 'stage_create' project.pk %}">{% icon 'plus' %}Добавить этап</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="kv">
+    <div><div class="k">Заказчик</div><div class="v">{{ project.client.name }}</div></div>
+    <div><div class="k">Главный инженер проекта</div><div class="v">{{ project.gip.short_name }}</div></div>
+    <div><div class="k">Плановые сроки</div><div class="v">{{ project.start_date|date:"d.m.Y" }} – {{ project.planned_end_date|date:"d.m.Y" }}</div></div>
+    <div><div class="k">Выполнение (принято {{ counts.accepted }} из {{ counts.total }} {{ counts.total|plural:"этапа,этапов,этапов" }})</div>
+      <div class="row" style="flex-wrap:nowrap"><div class="progress" style="flex:1"><span style="width:{{ project.progress }}%"></span></div><b>{{ project.progress }}%</b></div></div>
+  </div>
+</div>
+
+<div class="grid g4" style="margin-top:20px">
+  <div class="counter amber"><b>{{ counts.on_review }}</b>Ожидает проверки</div>
+  <div class="counter blue"><b>{{ counts.rework }}</b>На доработке</div>
+  <div class="counter green"><b>{{ counts.accepted }}</b>Принято</div>
+  <div class="counter gray"><b>{{ counts.blocked }}</b>Заблокировано зависимостью</div>
+</div>
+
+<div class="card flush" style="margin-top:20px">
+  <nav class="tabs" aria-label="Разделы проекта">
+    <a href="?tab=overview" class="{% if tab == 'overview' %}on{% endif %}">Обзор</a>
+    <a href="?tab=stages" class="{% if tab == 'stages' %}on{% endif %}">Этапы и задачи</a>
+    <a href="?tab=documents" class="{% if tab == 'documents' %}on{% endif %}">Документы</a>
+    <a href="?tab=reviews" class="{% if tab == 'reviews' %}on{% endif %}">Проверки и замечания</a>
+    <a href="?tab=history" class="{% if tab == 'history' %}on{% endif %}">История</a>
+  </nav>
+
+  {% if tab == 'overview' %}
+  <div style="padding:22px" class="grid g2">
+    <div>
+      <h3 style="margin-bottom:8px">Описание</h3>
+      <p>{{ project.description|default:"Описание не заполнено."|linebreaksbr }}</p>
+      <h3 style="margin:20px 0 8px">Исходные материалы</h3>
+      {% for d in source_docs %}<div class="version-row"><span class="vnum">v{{ d.current_version_no }}</span><a href="{% url 'document_detail' d.pk %}">{{ d.title }}</a><span class="muted small">{{ d.get_doc_type_display }}</span></div>
+      {% empty %}<p class="muted">Исходные документы ещё не загружены.</p>{% endfor %}
+      {% if manage %}<a class="btn btn-sm" style="margin-top:10px" href="{% url 'document_upload' %}?project={{ project.pk }}&next={{ request.get_full_path|urlencode }}">{% icon 'upload' 16 %}Загрузить документ</a>{% endif %}
+    </div>
+    <div>
+      <h3 style="margin-bottom:8px">Команда проекта</h3>
+      {% for u in team %}<div class="version-row"><span class="avatar" style="width:30px;height:30px;font-size:12px">{{ u.initials }}</span><span>{{ u.short_name }}</span><span class="muted small">{{ u.role.name }}</span></div>
+      {% empty %}<p class="muted">Исполнители ещё не назначены.</p>{% endfor %}
+      {% if project.approval_manager %}<p class="small muted" style="margin-top:8px">Менеджер по согласованию: {{ project.approval_manager.short_name }}</p>{% endif %}
+      <h3 style="margin:20px 0 8px">Последние действия</h3>
+      <div class="feed">{% for e in recent %}<div><span class="t">{{ e.created_at|when }}</span><span>{{ e.description }}</span></div>{% empty %}<div class="muted">Нет событий.</div>{% endfor %}</div>
+    </div>
+  </div>
+
+  {% elif tab == 'stages' %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>№</th><th>Этап</th><th>Исполнитель</th><th>Проверяющий</th><th>Срок</th><th>Зависит от</th><th>Статус</th><th>Действие</th></tr></thead>
+    <tbody>
+    {% for s in stages %}
+      <tr>
+        <td>{{ s.sequence_no }}</td>
+        <td><b><a href="{% url 'stage_detail' s.pk %}">{{ s.name }}</a></b>{% if s.tasks.all %}<span class="sub">{{ s.tasks.all|length }} {{ s.tasks.all|length|plural:"задача,задачи,задач" }}</span>{% endif %}{% if not s.file_required %}<span class="sub">без обязательного файла</span>{% endif %}</td>
+        <td>{% if s.executor %}{{ s.executor.short_name }}{% else %}<span class="muted">Не назначен</span>{% endif %}</td>
+        <td>{{ s.reviewer.short_name|default:"—" }}</td>
+        <td>{% deadline s.deadline s.status %}</td>
+        <td class="muted">{% for link in s.dependency_links.all %}{% if forloop.first %}{% if forloop.revcounter > 1 %}Этапы {% else %}Этап {% endif %}{% endif %}{{ link.depends_on.sequence_no }}{% if not forloop.last %}, {% endif %}{% empty %}Нет{% endfor %}</td>
+        <td>{% badge s.status s.get_status_display %}
+          {% if s.status == 'blocked' %}<span class="reason">{{ s.block_reason }}</span>{% elif s.status == 'on_review' and s.submitted_at %}<span class="reason">передан {{ s.submitted_at|when }}</span>{% endif %}</td>
+        <td>{% if manage and not s.executor and s.status != 'accepted' %}<a class="btn btn-sm btn-primary" href="?tab=stages&assign={{ s.pk }}">Назначить</a>{% else %}<a href="{% url 'stage_detail' s.pk %}">Открыть</a>{% if manage and s.status != 'accepted' %} · <a href="?tab=stages&assign={{ s.pk }}" class="small">переназначить</a>{% endif %}{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8"><div class="empty"><b>Этапов пока нет</b>{% if manage %}Сформируйте этапы: сроки, исполнители, проверяющие и зависимости.<br><a class="btn btn-primary" style="margin-top:12px" href="{% url 'stage_create' project.pk %}">Добавить этап</a>{% endif %}</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+
+  {% elif tab == 'documents' %}
+  <div style="padding:16px 22px 0" class="row between"><span class="muted small">Версии не перезаписываются: решение «Принято» относится к конкретной версии.</span>
+    <a class="btn btn-sm btn-primary" href="{% url 'document_upload' %}?project={{ project.pk }}&next={{ request.get_full_path|urlencode }}">{% icon 'upload' 16 %}Загрузить документ</a></div>
+  <div class="table-wrap" style="margin-top:12px"><table class="table">
+    <thead><tr><th>Документ</th><th>Тип</th><th>Этап</th><th>Версия</th><th>Статус версии</th><th>Обновлён</th></tr></thead>
+    <tbody>{% for d in documents %}{% with v=d.latest_version %}
+      <tr class="clickable" data-href="{% url 'document_detail' d.pk %}" tabindex="0">
+        <td><b><a href="{% url 'document_detail' d.pk %}">{{ d.title }}</a></b><span class="sub">{{ v.original_name }}</span></td>
+        <td>{{ d.get_doc_type_display }}</td><td>{% if d.stage %}{{ d.stage.sequence_no }}. {{ d.stage.name }}{% else %}<span class="muted">исходные материалы</span>{% endif %}</td>
+        <td>v{{ d.current_version_no }}</td><td>{% if v %}{% badge v.review_status v.get_review_status_display %}{% endif %}</td><td>{{ d.updated_at|when }}</td></tr>
+    {% endwith %}{% empty %}<tr><td colspan="6"><div class="empty"><b>Документов нет</b>Загрузите исходные материалы или результаты этапов.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+
+  {% elif tab == 'reviews' %}
+  <div style="padding:22px" class="grid g2">
+    <div>
+      <h3 style="margin-bottom:10px">Решения проверяющих</h3>
+      {% for r in reviews %}<div class="item"><div class="item-head"><b>Этап {{ r.stage.sequence_no }}. {{ r.stage.name }}</b><span class="push">{% badge r.decision r.get_decision_display %}</span></div>
+        <div class="meta">{{ r.reviewer.short_name }} · {{ r.created_at|when }}{% for v in r.versions.all %} · {{ v.document.title }} v{{ v.version_no }}{% endfor %}</div>{% if r.comment %}<div style="margin-top:4px">{{ r.comment }}</div>{% endif %}</div>
+      {% empty %}<p class="muted">Проверок пока не было.</p>{% endfor %}
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px">Замечания</h3>
+      {% for r in remarks %}<div class="item"><div class="item-head"><a href="{% url 'remark_detail' r.pk %}"><b>{{ r.number }}</b></a>{% badge r.severity r.get_severity_display %}<span class="push">{% badge r.status r.get_status_display %}</span></div>
+        <div>{{ r.text|truncatechars:140 }}</div><div class="meta">Этап {{ r.stage.sequence_no }} · {{ r.section }}{% if r.version %} · версия {{ r.version.version_no }}{% endif %} · {{ r.author.short_name }} → {{ r.assignee.short_name }}</div></div>
+      {% empty %}<p class="muted">Замечаний нет.</p>{% endfor %}
+    </div>
+  </div>
+
+  {% elif tab == 'history' %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Дата и время</th><th>Сотрудник</th><th>Действие</th><th>Было</th><th>Стало</th></tr></thead>
+    <tbody>{% for e in events %}<tr><td class="small" style="white-space:nowrap">{{ e.created_at|date:"d.m.Y H:i" }}</td><td>{{ e.user.short_name|default:"Система" }}</td><td>{{ e.description }}</td><td class="muted small">{{ e.old_value|default:"" }}</td><td class="small">{{ e.new_value|default:"" }}</td></tr>
+    {% empty %}<tr><td colspan="5"><div class="empty">История пуста.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</div>
+
+{% if assign_stage %}
+<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="assign-title">
+  <form class="dialog" method="post" action="{% url 'stage_assign' assign_stage.pk %}" data-assign-form>
+    {% csrf_token %}
+    <div class="dialog-head">
+      <div><h2 id="assign-title" style="font-size:22px">Назначение исполнителя</h2><p>Этап {{ assign_stage.sequence_no }}: {{ assign_stage.name }} · {{ project.name }}</p></div>
+      <a class="iconbtn" href="?tab=stages" aria-label="Закрыть">{% icon 'x' %}</a>
+    </div>
+    <div class="summary-box">
+      <div><div class="k">Роль</div><div class="v">{{ assign_stage.executor_role.name|default:"Любая роль исполнителя" }}</div></div>
+      <div><div class="k">Срок этапа</div><div class="v">{{ assign_stage.deadline|short_date }}</div></div>
+      <div><div class="k">Плановая трудоёмкость</div><div class="v">{% if assign_stage.labor_hours %}{{ assign_stage.labor_hours }} ч{% else %}не задана{% endif %}</div></div>
+    </div>
+    <div class="row between" style="margin-bottom:10px"><h3>Подходящие сотрудники</h3><span class="muted small">Сначала с наименьшей загрузкой</span></div>
+    {% for c in candidates %}
+      <label class="cand">
+        <input type="radio" name="executor" value="{{ c.user.pk }}" data-overloaded="{% if c.overloaded %}1{% else %}0{% endif %}" {% if assign_stage.executor_id == c.user.pk or not assign_stage.executor and forloop.first %}checked{% endif %}>
+        <span class="body">
+          <span class="row between"><b>{{ c.user.short_name }}{% if assign_stage.executor_id == c.user.pk %} <span class="muted small">(текущий)</span>{% endif %}</b>{% if c.overloaded %}{% badge 'critical' 'Перегрузка' %}{% else %}{% badge 'accepted' 'Свободен' %}{% endif %}</span>
+          <span class="muted small" style="display:block;margin:2px 0 6px">{{ c.count }} {{ c.count|plural:"активная задача,активные задачи,активных задач" }}{% if c.has_overdue %} · есть просроченный этап{% elif c.nearest %} · ближайший срок {{ c.nearest|short_date }}{% endif %}</span>
+          <span class="progress{% if c.overloaded %} red{% endif %}"><span style="width:{{ c.bar }}%"></span></span><span class="small {% if c.overloaded %}dl-over{% else %}muted{% endif %}">Загрузка на период: около {{ c.percent }}%</span>
+        </span>
+      </label>
+    {% empty %}
+      <div class="alert alert-warning">{% icon 'alert' %}<p>Нет активных сотрудников с ролью «{{ assign_stage.executor_role.name }}». Попросите директора создать учётную запись или измените роль исполнителя в настройках этапа.</p></div>
+    {% endfor %}
+    {% if candidates %}<div class="alert alert-warning">{% icon 'alert' %}<p>Оценка приблизительная{% if any_approx %}: плановая трудоёмкость задана не для всех задач{% endif %}. При выборе сотрудника с перегрузкой потребуется указать причину.</p></div>{% endif %}
+    <div class="field" data-reason-box style="display:none">
+      <label for="reason">Причина выбора перегруженного сотрудника<span class="req">*</span></label>
+      <textarea class="input textarea" id="reason" name="reason" rows="2" placeholder="Например: единственный специалист с опытом по АУПТ"></textarea>
+    </div>
+    <div class="field">
+      <label for="reviewer">Проверяющий</label>
+      <select class="input" id="reviewer" name="reviewer">
+        <option value="">— не менять / не назначен —</option>
+        {% for r in reviewers %}<option value="{{ r.pk }}" {% if assign_stage.reviewer_id == r.pk %}selected{% elif not assign_stage.reviewer and forloop.first %}selected{% endif %}>{{ r.short_name }}, {{ r.role.name|lower }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="row between" style="border-top:1px solid var(--border);padding-top:18px">
+      <span class="muted small" style="max-width:300px">Исполнитель получит уведомление, назначение запишется в историю проекта.</span>
+      <span class="row"><a class="btn" href="?tab=stages">Отмена</a><button class="btn btn-primary" type="submit" {% if not candidates %}disabled{% endif %}>Назначить</button></span>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

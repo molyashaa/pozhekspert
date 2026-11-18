@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Главная{% endblock %}
+{% block crumbs %}<b>Согласования</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Согласования</h1><p>Пакеты к отправке, внешние ответы к регистрации и замечания согласующей стороны</p></div>
+  <div class="actions"><a class="btn" href="{% url 'remark_external' %}">Зарегистрировать внешнее замечание</a><a class="btn btn-primary" href="{% url 'approval_create' %}">{% icon 'plus' %}Новый пакет</a></div>
+</div>
+<div class="grid g3">
+  <div class="stat"><div class="label">Пакеты к отправке</div><div class="num">{{ to_send.count }}</div></div>
+  <div class="stat amber"><div class="label">Ожидают ответа</div><div class="num">{{ waiting.count }}</div></div>
+  <div class="stat red"><div class="label">Внешние замечания в работе</div><div class="num">{{ external|length }}</div></div>
+</div>
+<div class="grid g2" style="margin-top:20px">
+  <div class="card"><div class="card-head"><h2>Пакеты к отправке</h2><a class="small" href="{% url 'approvals' %}">Все пакеты</a></div>
+    {% for p in to_send %}<div class="item"><div class="item-head"><a href="{% url 'approval_edit' p.pk %}"><b>{{ p.title }}</b></a><span class="push">{% badge p.status p.get_status_display %}</span></div><div class="meta">{{ p.project.number }} · {{ p.authority }}</div></div>
+    {% empty %}<div class="muted">Нет пакетов в подготовке.</div>{% endfor %}
+    <h3 style="margin:20px 0 10px">Ожидают ответа</h3>
+    {% for p in waiting %}<div class="item"><div class="item-head"><a href="{% url 'approval_edit' p.pk %}"><b>{{ p.title }}</b></a><span class="push">отправлен {{ p.sent_date|short_date }}</span></div><div class="meta">{{ p.project.number }} · {{ p.authority }}</div><a class="btn btn-sm" style="margin-top:8px" href="{% url 'approval_edit' p.pk %}">Зарегистрировать ответ</a></div>
+    {% empty %}<div class="muted">Нет отправленных пакетов.</div>{% endfor %}
+  </div>
+  <div class="card"><div class="card-head"><h2>Замечания согласующей стороны</h2><a class="small" href="{% url 'remarks' %}">Все замечания</a></div>
+    {% for r in external %}<div class="item"><div class="item-head"><a href="{% url 'remark_detail' r.pk %}"><b>{{ r.number }}</b></a>{% badge r.severity r.get_severity_display %}<span class="push">{% badge r.status r.get_status_display %}</span></div><div>{{ r.text|truncatechars:120 }}</div><div class="meta">{{ r.project.number }} · {{ r.stage.name }}</div></div>
+    {% empty %}<div class="muted">Внешних замечаний нет.</div>{% endfor %}
+    {% if stages %}<h3 style="margin:20px 0 10px">Мои этапы согласования</h3>
+      {% for s in stages %}<a class="task-card" href="{% url 'stage_detail' s.pk %}"><div class="top"><b>{{ s.name }}</b>{% badge s.status s.get_status_display %}</div><div class="meta">{{ s.project.name }} · срок {{ s.deadline|short_date }}</div></a>{% endfor %}{% endif %}
+  </div>
+</div>
+{% endblock %}

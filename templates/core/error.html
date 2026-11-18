@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}{% if user.is_authenticated %}{{ block.super }}{% else %}
+<div class="error-page"><div><div class="code">{{ code }}</div><h1>{{ title }}</h1><p class="muted" style="margin-top:10px">{{ text }}</p><a class="btn btn-primary" href="/" style="margin-top:16px">На главную</a></div></div>{% endif %}{% endblock %}
+{% block content %}
+<div class="error-page"><div><div class="code">{{ code }}</div><h1>{{ title }}</h1><p class="muted" style="margin-top:10px;max-width:520px">{{ text }}</p><a class="btn btn-primary" href="{% url 'home' %}" style="margin-top:16px">На главную</a></div></div>
+{% endblock %}

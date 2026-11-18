@@ -1,0 +1,8 @@
+{% load ui %}{% if messages %}<div class="messages">
+{% for m in messages %}
+  <div class="alert alert-{% if m.tags == 'error' %}error{% elif m.tags == 'warning' %}warning{% elif m.tags == 'success' %}success{% else %}info{% endif %}" role="{% if m.tags == 'error' %}alert{% else %}status{% endif %}"{% if m.tags == 'success' %} data-autohide{% endif %}>
+    {% if m.tags == 'error' %}{% icon 'alert' %}{% elif m.tags == 'warning' %}{% icon 'alert' %}{% elif m.tags == 'success' %}{% icon 'check' %}{% else %}{% icon 'info' %}{% endif %}
+    <p>{{ m }}</p>
+  </div>
+{% endfor %}
+</div>{% endif %}

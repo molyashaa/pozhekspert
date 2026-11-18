@@ -1,0 +1,7 @@
+{% load ui %}{% if form.errors %}
+<div class="alert alert-error" role="alert">{% icon 'alert' %}
+  <div><b>Данные не сохранены.</b>
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}{% else %}<p>Исправьте поля, отмеченные красным. Введённые данные сохранены в форме.</p>{% endif %}
+  </div>
+</div>
+{% endif %}

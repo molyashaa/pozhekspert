@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Загрузить документ{% endblock %}
+{% block crumbs %}<a href="{% url 'documents' %}">Документы</a> / <b>Загрузка</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Загрузить документ</h1><p>Документ хранится в рамках проекта и связывается с этапом и типом. Новые версии загружаются из карточки документа.</p></div></div>
+<form class="card" method="post" enctype="multipart/form-data" novalidate data-upload style="max-width:860px">
+  {% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.project %}
+    {% include "partials/field.html" with field=form.stage %}
+    {% include "partials/field.html" with field=form.title %}
+    {% include "partials/field.html" with field=form.doc_type %}
+    <div class="field full{% if form.file.errors %} has-error{% endif %}">
+      <label>Файл<span class="req">*</span></label>
+      <div class="dropzone">Перетащите файл сюда или выберите его · {{ ALLOWED_EXT|join:", "|upper }} до {{ MAX_UPLOAD_MB }} МБ<input type="file" name="file" accept=".pdf,.docx,.xlsx,.dwg,.dxf" required><div class="file-msg"></div></div>
+      {% for e in form.file.errors %}<div class="errors">{{ e }}</div>{% endfor %}
+    </div>
+    {% include "partials/field.html" with field=form.comment full=1 %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit" data-upload-submit>{% icon 'upload' %}Загрузить документ</button><a class="btn" href="{% if next %}{{ next }}{% else %}{% url 'documents' %}{% endif %}">Отмена</a></div>
+  <p class="small muted" style="margin-top:12px">DWG и DXF хранятся и скачиваются; просмотр — во внешней CAD-программе. PDF открывается прямо в браузере.</p>
+</form>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Замечание {{ remark.number }}{% endblock %}
+{% block crumbs %}<a href="{% url 'remarks' %}">Замечания</a> / <b>{{ remark.number }}</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="row"><h1>Замечание {{ remark.number }}</h1>{% badge remark.severity remark.get_severity_display %}{% badge remark.status remark.get_status_display %}{% if remark.source == 'external' %}<span class="tag">согласующая сторона</span>{% endif %}</div>
+    <p><a href="{% url 'project_detail' remark.project_id %}">{{ remark.project.name }}</a> · {{ remark.project.number }} · <a href="{% url 'stage_detail' stage.pk %}">этап {{ stage.sequence_no }} «{{ stage.name }}»</a></p></div>
+  <div class="actions">{% if stage.status == 'on_review' and stage.reviewer_id == user.id %}<a class="btn btn-primary" href="{% url 'review_detail' stage.pk %}">Открыть проверку</a>{% endif %}
+    <a class="btn" href="{% url 'ai_assistant' %}?q={{ remark.text|urlencode }}&stage_type={{ stage.name|urlencode }}">{% icon 'sparkle' %}Похожие случаи</a></div>
+</div>
+<div class="grid g-main">
+  <div class="stack">
+    <div class="card">
+      <h2 style="margin-bottom:10px">Текст замечания</h2>
+      <p style="font-size:16px">{{ remark.text|linebreaksbr }}</p>
+      <div class="kv" style="margin-top:16px">
+        <div><div class="k">Документ</div><div class="v">{% if remark.document %}<a href="{% url 'document_detail' remark.document_id %}">{{ remark.document.title }}</a>{% else %}—{% endif %}</div></div>
+        <div><div class="k">Версия</div><div class="v">{% if remark.version %}<a href="{% url 'version_download' remark.version_id %}">версия {{ remark.version.version_no }}</a>{% else %}—{% endif %}</div></div>
+        <div><div class="k">Раздел / лист</div><div class="v">{{ remark.section }}</div></div>
+        <div><div class="k">Срок исправления</div><div class="v">{% if remark.due_date %}{% deadline remark.due_date remark.status %}{% else %}—{% endif %}</div></div>
+      </div>
+      {% if remark.fixed_in_version %}<p class="small muted" style="margin-top:12px">Исправление передано в версии {{ remark.fixed_in_version.version_no }}.</p>{% endif %}
+      {% if user.id == remark.assignee_id and remark.status in 'open,rework' %}
+        <div class="alert alert-warning" style="margin-top:14px">{% icon 'alert' %}<p>Исправьте документ и загрузите новую версию на <a href="{% url 'stage_detail' stage.pk %}">странице этапа</a>, затем передайте результат на проверку. Удалить замечание или самостоятельно пометить его принятым нельзя.</p></div>{% endif %}
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px">Переписка</h2>
+      {% for c in comments %}<div class="item"><div class="item-head"><b>{{ c.author.short_name }}</b><span class="muted small">{{ c.author.role.name }}</span><span class="push muted small">{{ c.created_at|when }}</span></div><div>{{ c.text|linebreaksbr }}</div></div>
+      {% empty %}<p class="muted small">Сообщений пока нет.</p>{% endfor %}
+      <form method="post" action="{% url 'remark_comment' remark.pk %}" style="margin-top:14px">{% csrf_token %}
+        <div class="field"><label for="ctext">Сообщение</label><textarea class="input textarea" id="ctext" name="text" rows="2" required placeholder="Уточнение, вопрос или ответ на замечание"></textarea></div>
+        <button class="btn" type="submit">Отправить</button></form>
+    </div>
+    {% if versions %}<div class="card"><h2 style="margin-bottom:10px">Связанные версии документа</h2>
+      {% for v in versions %}<div class="version-row"><span class="vnum">{{ v.version_no }}</span><span style="flex:1"><a href="{% url 'version_download' v.pk %}">{{ v.original_name }}</a><span class="reason">{{ v.uploaded_at|date:"d.m.Y H:i" }} · {{ v.comment|default:"" }}</span></span>{% if v.pk == remark.version_id %}<span class="tag">замечание к этой версии</span>{% endif %}{% if v.pk == remark.fixed_in_version_id %}<span class="tag">исправление</span>{% endif %}{% badge v.review_status v.get_review_status_display %}</div>{% endfor %}</div>{% endif %}
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="dl-list">
+        <div><div class="k">Автор</div><div class="v">{{ remark.author.short_name }} <span class="muted small">{{ remark.author.role.name }}</span></div></div>
+        <div><div class="k">Ответственный исполнитель</div><div class="v">{{ remark.assignee.short_name }}</div></div>
+        <div><div class="k">Создано</div><div class="v">{{ remark.created_at|date:"d.m.Y H:i" }}</div></div>
+        {% if remark.resolved_at %}<div><div class="k">Закрыто</div><div class="v">{{ remark.resolved_at|date:"d.m.Y H:i" }}</div></div>{% endif %}
+        {% if remark.category %}<div><div class="k">Категория</div><div class="v">{{ remark.category }}</div></div>{% endif %}
+        {% if remark.ai_status != 'none' %}<div><div class="k">Архив ИИ</div><div class="v">{{ remark.get_ai_status_display }}</div></div>{% endif %}
+      </div>
+    </div>
+    {% if can_recheck %}
+    <div class="card"><h2 style="margin-bottom:10px">Повторная проверка</h2>
+      <form method="post" action="{% url 'remark_action' remark.pk %}">{% csrf_token %}
+        <div class="field"><label>Комментарий</label><textarea class="input textarea" name="comment" rows="2"></textarea></div>
+        <div class="row"><button class="btn btn-ok" name="action" value="accept_fix" type="submit">Принять исправление</button>
+          <button class="btn btn-danger" name="action" value="not_fixed" type="submit" data-confirm="Замечание вернётся исполнителю в статусе «На доработке».">Не исправлено</button></div>
+      </form></div>{% endif %}
+    {% if can_irrelevant %}
+    <div class="card"><h2 style="margin-bottom:10px">Пометить «Неактуально»</h2>
+      <form method="post" action="{% url 'remark_action' remark.pk %}" data-confirm="Замечание будет закрыто со статусом «Неактуально». Объяснение сохранится в истории.">{% csrf_token %}<input type="hidden" name="action" value="irrelevant">
+        <div class="field"><label>Объяснение<span class="req">*</span></label><textarea class="input textarea" name="comment" rows="2" required></textarea></div>
+        <button class="btn btn-block" type="submit">Неактуально</button></form></div>{% endif %}
+    <div class="card"><h2 style="margin-bottom:10px">История статусов</h2>
+      <div class="feed">{% for h in history %}<div><span class="t">{{ h.created_at|date:"d.m H:i" }}</span><span>{% if h.old_status %}{{ h.old_label }} → {% endif %}<b>{{ h.new_label }}</b><span class="reason">{{ h.user.short_name|default:"Система" }}{% if h.comment %} · {{ h.comment }}{% endif %}</span></span></div>{% endfor %}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

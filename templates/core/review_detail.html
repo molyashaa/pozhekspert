@@ -1,0 +1,90 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Проверка: {{ stage.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'reviews' %}">Проверки</a> / <b>{{ stage.name }}</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="row"><h1>{{ stage.name }}</h1>{% badge stage.status stage.get_status_display %}</div>
+    <p>{{ project.name }} · {{ project.number }} · этап {{ stage.sequence_no }} · исполнитель {{ stage.executor.short_name|default:"—" }} · срок {{ stage.deadline|short_date }}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'stage_detail' stage.pk %}">Карточка этапа</a></div>
+</div>
+{% if stage.status != 'on_review' %}<div class="alert alert-info">{% icon 'info' %}<p>Этап сейчас не на проверке ({{ stage.get_status_display|lower }}). Решение по нему принять нельзя.</p></div>{% endif %}
+
+<div class="grid g-main">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Результат{% for v in current %}{% if forloop.first %}, версия {{ v.version_no }}{% endif %}{% endfor %}</h2></div>
+      {% for v in current %}
+        <div class="version-row"><span class="vnum">{{ v.version_no }}</span>
+          <span style="flex:1;min-width:200px"><b>{{ v.document.title }}</b><span class="reason">{{ v.original_name }} · {{ v.size_display }} · {{ v.uploaded_by.short_name }} · {{ v.uploaded_at|when }}{% if v.comment %} · «{{ v.comment }}»{% endif %}</span></span>
+          {% if v.is_pdf %}<a class="btn btn-sm" href="{% url 'version_download' v.pk %}?inline=1" target="_blank" rel="noopener">{% icon 'eye' 16 %}Открыть</a>{% endif %}
+          <a class="btn btn-sm" href="{% url 'version_download' v.pk %}">{% icon 'download' 16 %}Скачать</a>
+        </div>
+      {% empty %}<p class="muted">{% if stage.file_required %}Нет версий, ожидающих проверки.{% else %}Этап не требует файла — оцените результат по описанию и задачам.{% endif %}</p>{% endfor %}
+      {% if preview %}<iframe class="pdf-frame" style="margin-top:14px" src="{% url 'version_download' preview.pk %}?inline=1" title="Просмотр PDF"></iframe>
+      {% elif current %}<p class="small muted" style="margin-top:10px">Встроенный просмотр доступен для PDF. DOCX, XLSX, DWG и DXF скачиваются и открываются во внешней программе (CAD для чертежей).</p>{% endif %}
+    </div>
+
+    {% if fixed_remarks %}
+    <div class="card">
+      <div class="card-head"><h2>Повторная проверка: исправленные замечания</h2></div>
+      {% for r in fixed_remarks %}
+        <div class="item">
+          <div class="item-head"><a href="{% url 'remark_detail' r.pk %}"><b>{{ r.number }}</b></a>{% badge r.severity r.get_severity_display %}<span class="push">{% badge r.status r.get_status_display %}</span></div>
+          <div>{{ r.text }}</div>
+          <div class="meta">{{ r.section }}{% if r.version %} · замечание к версии {{ r.version.version_no }}{% endif %}{% if r.fixed_in_version %} · исправлено в версии {{ r.fixed_in_version.version_no }}{% endif %}</div>
+          {% if is_reviewer %}
+          <div class="row" style="margin-top:10px">
+            <form method="post" action="{% url 'remark_review' r.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="accept_fix"><button class="btn btn-sm btn-ok" type="submit">Принять исправление</button></form>
+            <form method="post" action="{% url 'remark_review' r.pk %}" class="inline" data-confirm="Замечание вернётся исполнителю в статусе «На доработке»." data-confirm-title="Не исправлено?">{% csrf_token %}<input type="hidden" name="action" value="not_fixed"><button class="btn btn-sm btn-danger" type="submit">Не исправлено</button></form>
+          </div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h2>История версий</h2></div>
+      {% for v in all_versions %}
+        <div class="version-row"><span class="vnum">{{ v.version_no }}</span><span style="flex:1;min-width:200px"><a href="{% url 'version_download' v.pk %}">{{ v.document.title }}</a><span class="reason">{{ v.original_name }} · {{ v.uploaded_by.short_name }} · {{ v.uploaded_at|date:"d.m.Y H:i" }}{% if v.comment %} · «{{ v.comment }}»{% endif %}</span></span>{% badge v.review_status v.get_review_status_display %}</div>
+      {% empty %}<p class="muted">Версий нет.</p>{% endfor %}
+      {% if other_remarks %}<h3 style="margin:18px 0 8px">Другие замечания этапа</h3>
+        {% for r in other_remarks %}<div class="version-row"><a href="{% url 'remark_detail' r.pk %}">{{ r.number }}</a><span style="flex:1">{{ r.text|truncatechars:90 }}</span>{% badge r.status r.get_status_display %}</div>{% endfor %}{% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    {% if is_reviewer %}
+    <div class="card">
+      <h2 style="margin-bottom:12px">Решение{% for v in current %}{% if forloop.first %} по версии {{ v.version_no }}{% endif %}{% endfor %}</h2>
+      <form method="post" action="{% url 'stage_accept' stage.pk %}" data-confirm="Результат этапа будет принят. Решение фиксируется с вашим именем, датой и версией; зависимые этапы откроются автоматически." data-confirm-title="Принять результат?">{% csrf_token %}
+        <div class="field"><label for="accept-comment">Комментарий (необязательно)</label><textarea class="input textarea" id="accept-comment" name="comment" rows="2"></textarea></div>
+        <button class="btn btn-success btn-block" type="submit">{% icon 'check' %}Принять результат</button>
+      </form>
+      <button class="btn btn-warn btn-block" type="button" style="margin-top:10px" data-open-return>Вернуть на доработку</button>
+      <p class="small muted" style="margin-top:10px">Исполнитель не может принять собственный результат. При возврате замечание обязательно.</p>
+    </div>
+    <div class="card" id="return-box" style="{% if not open_return and not draft_text %}display:none{% endif %}">
+      <h2 style="margin-bottom:12px">Замечание при возврате</h2>
+      <div class="alert alert-warning" data-draft-offer style="display:none">{% icon 'sparkle' %}<p>Есть черновик из ИИ-помощника. <button type="button" class="link-btn">Вставить</button></p></div>
+      {% if draft_text %}<div class="alert alert-warning">{% icon 'sparkle' %}<p>Текст вставлен из ИИ-помощника как черновик. <b>Проверьте и отредактируйте его</b> под конкретный результат.</p></div>{% endif %}
+      <form method="post" action="{% url 'stage_return' stage.pk %}" novalidate data-confirm="Результат вернётся исполнителю. Замечание будет привязано к выбранной версии, исполнитель получит уведомление, зависимые этапы останутся заблокированными." data-confirm-title="Вернуть на доработку?">
+        {% csrf_token %}
+        {% include "partials/field.html" with field=form.text %}
+        {% include "partials/field.html" with field=form.version %}
+        {% include "partials/field.html" with field=form.section %}
+        {% include "partials/field.html" with field=form.severity %}
+        {% include "partials/field.html" with field=form.due_date %}
+        <button class="btn btn-warn btn-block" type="submit">Подтвердить возврат</button>
+      </form>
+      <a class="btn btn-block" style="margin-top:10px" href="{% url 'stage_hint' stage.pk %}?return_to={{ request.path|urlencode }}">{% icon 'sparkle' %}Подобрать формулировку в ИИ-помощнике</a>
+    </div>
+    {% else %}
+    <div class="card"><h2 style="margin-bottom:6px">Решение</h2><p class="muted small">{% if stage.executor_id == user.id %}Вы исполнитель этого этапа — принять собственный результат нельзя.{% elif stage.reviewer %}Решение принимает назначенный проверяющий: {{ stage.reviewer.short_name }}.{% else %}Проверяющий не назначен.{% endif %}</p></div>
+    {% endif %}
+    {% if reviews %}<div class="card"><h2 style="margin-bottom:8px">Прежние решения</h2>
+      {% for r in reviews %}<div class="version-row"><span style="flex:1">{{ r.created_at|date:"d.m.Y H:i" }} · {{ r.reviewer.short_name }}{% if r.comment %}<span class="reason">{{ r.comment|truncatechars:100 }}</span>{% endif %}</span>{% badge r.decision r.get_decision_display %}</div>{% endfor %}</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

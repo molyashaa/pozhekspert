@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Внешнее замечание{% endblock %}
+{% block crumbs %}<a href="{% url 'remarks' %}">Замечания</a> / <b>Замечание согласующей стороны</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Замечание согласующей стороны</h1><p>Регистрация замечаний и ответов из внешнего согласования. Внутреннюю приёмку выполняет назначенный эксперт.</p></div></div>
+<form class="card" method="post" novalidate style="max-width:860px">{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.stage full=1 %}
+    {% include "partials/field.html" with field=form.document %}
+    {% include "partials/field.html" with field=form.section %}
+    {% include "partials/field.html" with field=form.text full=1 %}
+    {% include "partials/field.html" with field=form.severity %}
+    {% include "partials/field.html" with field=form.due_date %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Зарегистрировать замечание</button><a class="btn" href="{% url 'remarks' %}">Отмена</a></div>
+</form>
+{% endblock %}

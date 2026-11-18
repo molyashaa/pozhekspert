@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}ИИ-помощник{% endblock %}
+{% block crumbs %}<b>ИИ-помощник</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>ИИ-помощник</h1><p>Поиск похожих замечаний в архиве компании</p></div>
+  {% if return_to %}<div class="actions"><a class="btn" href="{{ return_to }}">← Вернуться к работе</a></div>{% endif %}</div>
+<div class="alert alert-warning">{% icon 'info' %}<p><b>Подсказка носит справочный характер и требует проверки специалистом.</b> Помощник не проверяет чертежи, не принимает результаты и не создаёт замечания без вашего подтверждения.</p></div>
+<div class="grid g-side">
+  <div class="stack">
+    <form class="card" method="get">
+      <h2 style="margin-bottom:14px">Что нужно найти</h2>
+      {% if return_to %}<input type="hidden" name="return_to" value="{{ return_to }}">{% endif %}
+      {% include "partials/field.html" with field=form.query %}
+      {% include "partials/field.html" with field=form.stage_type %}
+      {% include "partials/field.html" with field=form.doc_type %}
+      <button class="btn btn-primary btn-block" type="submit">{% icon 'search' %}Найти похожие замечания</button>
+    </form>
+    <div class="card">
+      <h2 style="margin-bottom:10px">Как работает поиск</h2>
+      <p class="small muted">Помощник сравнивает формулировку с замечаниями из архива по словам и ключевым выражениям ({{ algorithm }}) и показывает до пяти самых близких.</p>
+      <p class="small muted">В поиск попадают только записи, к которым у вас есть доступ. Внешние ИИ-сервисы не вызываются, документы компании никуда не передаются.</p>
+      <p class="small muted">Если совпадений нет, помощник честно сообщит об этом и ничего не придумает. Архив пополняется по мере работы, индекс поиска пересчитывается при каждом запросе.</p>
+    </div>
+  </div>
+  <div>
+    {% if searched %}
+      {% if results %}
+        <div class="row between" style="margin-bottom:14px"><h2 style="font-size:19px">Найдено {{ results|length }} {{ results|length|plural:"похожее замечание,похожих замечания,похожих замечаний" }}</h2><span class="muted small">Показаны записи со сходством выше {{ info.threshold }}%</span></div>
+        {% for r in results %}{% with e=r.entry %}
+        <div class="ai-card">
+          <div class="row between" style="flex-wrap:nowrap;align-items:flex-start"><h3 style="font-size:16px">{{ e.title }}</h3><span class="sim"><span class="progress"><span style="width:{{ r.score }}%"></span></span>Сходство {{ r.score }}%</span></div>
+          <p style="margin-top:6px">{{ e.text }}</p>
+          <div class="lbl">Почему найдено</div>
+          <p class="small">{% if r.words %}Общие слова: {% for w in r.words %}«{{ w }}»{% if not forloop.last %}, {% endif %}{% endfor %}.{% else %}Близость формулировок (совпадение частей слов).{% endif %}</p>
+          {% if e.resolution %}<div class="lbl">Как устраняли раньше</div><p class="small">{{ e.resolution }}</p>{% endif %}
+          <div class="src">{{ e.source_label|default:"Архив замечаний" }}{% if e.stage_type %} · этап «{{ e.stage_type }}»{% endif %} · {% badge 'accepted' 'Принято' %} · {{ e.record_date|date:"j E Y"|default:"" }}{% if e.is_demo %} · <span class="tag">демонстрационный пример</span>{% endif %}</div>
+          <div class="ai-actions">
+            <a class="btn btn-sm" href="{% url 'ai_entry' e.pk %}">Открыть запись</a>
+            {% if return_to and '/review/' in return_to %}<a class="btn btn-sm btn-primary" href="{{ return_to }}?ai_draft={{ e.pk }}">Использовать как черновик</a>
+            {% else %}<button class="btn btn-sm btn-primary" type="button" data-copy-draft="{{ e.text }}">Использовать как черновик</button>{% endif %}
+            <span class="push">
+              <form method="post" action="{% url 'ai_feedback' e.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="useful" value="1"><input type="hidden" name="query" value="{{ form.cleaned_data.query }}"><button class="btn btn-sm" type="submit">{% icon 'thumbup' 15 %}Полезно</button></form>
+              <form method="post" action="{% url 'ai_feedback' e.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="useful" value="0"><input type="hidden" name="query" value="{{ form.cleaned_data.query }}"><button class="btn btn-sm" type="submit">{% icon 'thumbdown' 15 %}Не полезно</button></form>
+            </span>
+          </div>
+        </div>
+        {% endwith %}{% endfor %}
+        <p class="small muted" style="margin-top:12px">«Использовать как черновик» копирует текст в поле замечания без автосохранения — проверьте и отредактируйте его под конкретный результат.</p>
+      {% else %}
+        <div class="card"><div class="empty"><b>Не найдено достаточно похожих примеров</b>В архиве нет записей со сходством выше {{ info.threshold }}%. Выполните обычную проверку специалистом или переформулируйте запрос.</div></div>
+      {% endif %}
+    {% else %}
+      <div class="card"><div class="empty"><b>Опишите замечание слева</b>Например: «Номенклатура извещателей в спецификации не совпадает со схемой АПС».</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

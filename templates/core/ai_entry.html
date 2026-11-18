@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ entry.title }}{% endblock %}
+{% block crumbs %}<a href="{% url 'ai_assistant' %}">ИИ-помощник</a> / <b>Запись архива</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="row"><h1>{{ entry.title }}</h1>{% badge entry.status entry.get_status_display %}{% if entry.is_demo %}<span class="tag">демонстрационный пример</span>{% endif %}</div>
+  <p>{{ entry.category }}{% if entry.stage_type %} · этап «{{ entry.stage_type }}»{% endif %}{% if entry.doc_type %} · {{ entry.get_doc_type_display }}{% endif %}</p></div>
+  <div class="actions"><button class="btn" type="button" data-copy-draft="{{ entry.text }}">{% icon 'copy' %}Использовать как черновик</button>{% if manage %}<a class="btn" href="{% url 'ai_entry_edit' entry.pk %}">Изменить</a>{% endif %}</div></div>
+<div class="alert alert-warning">{% icon 'info' %}<p><b>Подсказка носит справочный характер и требует проверки специалистом.</b></p></div>
+<div class="grid g-main">
+  <div class="card">
+    <h2 style="margin-bottom:8px">Текст примера</h2><p>{{ entry.text|linebreaksbr }}</p>
+    {% if entry.resolution %}<h2 style="margin:18px 0 8px">Как устраняли</h2><p>{{ entry.resolution|linebreaksbr }}</p>{% endif %}
+    {% if source_remark %}<p style="margin-top:16px">Исходное замечание: <a href="{% url 'remark_detail' source_remark.pk %}">{{ source_remark.number }}</a></p>{% endif %}
+  </div>
+  <div class="stack">
+    <div class="card"><div class="dl-list">
+      <div><div class="k">Источник</div><div class="v">{{ entry.source_label|default:"—" }}</div></div>
+      <div><div class="k">Дата случая</div><div class="v">{{ entry.record_date|date:"d.m.Y"|default:"—" }}</div></div>
+      <div><div class="k">Проверил</div><div class="v">{{ entry.checked_by.short_name|default:"—" }}{% if entry.checked_at %}, {{ entry.checked_at|date:"d.m.Y" }}{% endif %}</div></div>
+      <div><div class="k">В индексе поиска</div><div class="v">{% if entry.indexed_at %}с {{ entry.indexed_at|date:"d.m.Y H:i" }}{% else %}нет{% endif %}</div></div>
+    </div>
+    {% if manage %}<form method="post" action="{% url 'ai_entry_action' entry.pk %}" class="row" style="margin-top:14px">{% csrf_token %}
+      {% if entry.status == 'candidate' %}<button class="btn" name="action" value="check">Проверить</button>{% endif %}
+      {% if entry.status != 'included' %}<button class="btn btn-ok" name="action" value="include">Включить в архив ИИ</button>{% else %}<button class="btn btn-danger" name="action" value="exclude" data-confirm="Запись перестанет участвовать в поиске. Исходное замечание сохранится.">Исключить из архива ИИ</button>{% endif %}</form>{% endif %}
+    </div>
+    {% if manage and feedback %}<div class="card"><h2 style="margin-bottom:8px">Оценки пользователей</h2>{% for f in feedback %}<div class="version-row">{% if f.useful %}{% badge 'accepted' 'Полезно' %}{% else %}{% badge 'critical' 'Не полезно' %}{% endif %}<span class="small">{{ f.user.short_name }} · {{ f.created_at|when }}</span></div>{% endfor %}<p class="small muted" style="margin-top:8px">Оценки не меняют алгоритм автоматически.</p></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

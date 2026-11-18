@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Уведомления{% endblock %}
+{% block crumbs %}<b>Уведомления</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Уведомления</h1><p>Назначения, сроки, результаты на проверке, возвраты и принятие. Отметка о прочтении статус задачи не меняет.</p></div>
+  <div class="actions"><form method="post" action="{% url 'notification_read_all' %}">{% csrf_token %}<button class="btn" type="submit">Отметить все прочитанными</button></form></div></div>
+<div class="chips" style="margin-bottom:14px"><a class="chip {% if not f %}on{% endif %}" href="?">Все</a><a class="chip {% if f == 'unread' %}on{% endif %}" href="?f=unread">Непрочитанные</a></div>
+<div class="card flush">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Событие</th><th>Описание</th><th>Проект</th><th>Дата и время</th><th></th></tr></thead>
+    <tbody>{% for n in page %}
+      <tr{% if not n.read_at %} style="font-weight:500"{% endif %}>
+        <td>{% if n.read_at %}{% badge 'x' n.get_event_type_display 'gray' %}{% else %}{% badge 'x' n.get_event_type_display 'blue' %}{% endif %}</td>
+        <td><b>{{ n.title }}</b>{% if n.message %}<span class="sub">{{ n.message|truncatechars:140 }}</span>{% endif %}</td>
+        <td class="small">{{ n.project.number|default:"—" }}</td>
+        <td class="small" style="white-space:nowrap">{{ n.created_at|when }}</td>
+        <td style="white-space:nowrap"><form method="post" action="{% url 'notification_read' n.pk %}" class="inline">{% csrf_token %}{% if n.url %}<button class="btn btn-sm" name="go" value="1" type="submit">Открыть</button>{% endif %}{% if not n.read_at %} <button class="btn btn-sm" type="submit">Прочитано</button>{% endif %}</form></td>
+      </tr>
+    {% empty %}<tr><td colspan="5"><div class="empty"><b>Уведомлений нет</b>Новые события появятся здесь.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "partials/pager.html" %}
+</div>
+{% endblock %}

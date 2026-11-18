@@ -1,0 +1,69 @@
+{% load static ui %}<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ПожЭксперт+{% endblock %} · ПожЭксперт+</title>
+  <script>try{var t=localStorage.getItem("pe-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body data-max-mb="{{ MAX_UPLOAD_MB }}" data-allowed-ext="{{ ALLOWED_EXT|join:',' }}">
+{% block body %}
+<div class="layout">
+  <aside class="sidebar" aria-label="Главное меню">
+    <a class="brand" href="{% url 'home' %}"><span class="logo">{% icon 'flame' 20 %}</span>ПожЭксперт+</a>
+    <nav class="nav">
+      {% for item in menu %}
+        <a href="{{ item.url }}" class="{% if item.active %}active{% endif %}">{% icon item.icon 19 %}<span>{{ item.title }}</span>{% if item.badge %}<span class="count">{{ item.badge }}</span>{% endif %}</a>
+      {% endfor %}
+    </nav>
+    <a class="me" href="{% url 'profile' %}" style="text-decoration:none">
+      <span class="avatar">{{ user.initials }}</span>
+      <span><b>{{ user.short_name }}</b><span>{{ user.role.name }}</span></span>
+    </a>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <button class="iconbtn menu-toggle" type="button" data-menu-toggle aria-label="Меню">{% icon 'menu' %}</button>
+      <div class="crumbs">{% block crumbs %}{% endblock %}</div>
+      <form class="topsearch" action="{% url 'search' %}" method="get" role="search">
+        {% icon 'search' %}
+        <input type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Поиск проектов, документов, замечаний" aria-label="Глобальный поиск">
+      </form>
+      <div class="spacer"></div>
+      {% if DEMO_MODE %}<span class="demo-tag" title="Учебный прототип: все записи — демонстрационные">Демо-данные</span>{% endif %}
+      <a class="iconbtn" href="{% url 'notifications' %}" aria-label="Уведомления{% if unread_count %}: {{ unread_count }} новых{% endif %}">{% icon 'bell' %}{% if unread_count %}<span class="dot"></span>{% endif %}</a>
+      <div class="profile-menu">
+        <button class="avatar" type="button" data-profile-toggle aria-label="Меню профиля" style="border:0;cursor:pointer;width:40px;height:40px">{{ user.initials }}</button>
+        <div class="dropdown">
+          <div class="who"><b>{{ user.full_name }}</b><span class="muted small">{{ user.role.name }} · {{ user.email }}</span></div>
+          <a href="{% url 'profile' %}">{% icon 'user' %}Профиль</a>
+          <a href="{% url 'notifications' %}">{% icon 'bell' %}Уведомления{% if unread_count %} ({{ unread_count }}){% endif %}</a>
+          <button type="button" data-toggle-theme>{% icon 'moon' %}<span data-theme-label>Тёмная тема</span></button>
+          {% if user.is_director %}<a href="{% url 'audit' %}">{% icon 'history' %}Журнал аудита</a>{% endif %}
+          {% if user.is_staff %}<a href="/admin/">{% icon 'lock' %}Админ-панель Django</a>{% endif %}
+          <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">{% icon 'logout' %}Выход</button></form>
+        </div>
+      </div>
+    </header>
+    <main class="content" id="content">
+      {% include "partials/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+<dialog class="confirm" id="confirm-dialog">
+  <h2 data-confirm-title>Подтвердите действие</h2>
+  <p class="muted" data-confirm-text></p>
+  <div class="row">
+    <button type="button" class="btn" data-confirm-cancel>Отмена</button>
+    <button type="button" class="btn btn-primary" data-confirm-ok>Подтвердить</button>
+  </div>
+</dialog>
+<script src="{% static 'js/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

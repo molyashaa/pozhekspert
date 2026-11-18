@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Пример архива ИИ{% endblock %}
+{% block crumbs %}<a href="{% url 'ai_archive' %}">Архив ИИ</a> / <b>{% if entry %}Изменить пример{% else %}Новый пример{% endif %}</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if entry %}Изменить пример{% elif remark %}Включить замечание {{ remark.number }} в архив ИИ{% else %}Добавить пример{% endif %}</h1>
+  <p>Проверьте понятность текста, корректность способа устранения и отсутствие персональных и конфиденциальных данных.</p></div></div>
+<form class="card" method="post" novalidate style="max-width:900px">{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.title full=1 %}
+    {% include "partials/field.html" with field=form.text full=1 %}
+    {% include "partials/field.html" with field=form.category %}
+    {% include "partials/field.html" with field=form.stage_type %}
+    {% include "partials/field.html" with field=form.doc_type %}
+    {% include "partials/field.html" with field=form.record_date %}
+    {% include "partials/field.html" with field=form.resolution full=1 %}
+    {% include "partials/field.html" with field=form.source_label full=1 %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Сохранить</button><a class="btn" href="{% url 'ai_archive' %}">Отмена</a></div>
+</form>
+{% endblock %}

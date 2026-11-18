@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{% if employee %}Изменить данные{% else %}Новый сотрудник{% endif %}{% endblock %}
+{% block crumbs %}<a href="{% url 'employees' %}">Сотрудники</a> / <b>{% if employee %}{{ employee.short_name }}{% else %}Новый сотрудник{% endif %}</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if employee %}Изменить данные сотрудника{% else %}Добавить сотрудника{% endif %}</h1>
+  <p>{% if employee %}Изменение роли действует со следующего запроса к серверу и фиксируется в журнале аудита.{% else %}Система сгенерирует временный пароль и потребует сменить его при первом входе.{% endif %}</p></div></div>
+<form class="card" method="post" novalidate style="max-width:860px">{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.full_name full=1 %}
+    {% include "partials/field.html" with field=form.email %}
+    {% include "partials/field.html" with field=form.role %}
+    {% include "partials/field.html" with field=form.department %}
+    {% include "partials/field.html" with field=form.phone %}
+    {% if form.can_manage_users %}{% include "partials/check.html" with field=form.can_manage_users %}{% endif %}
+    {% include "partials/check.html" with field=form.can_manage_clients %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">{% if employee %}Сохранить изменения{% else %}Создать учётную запись{% endif %}</button><a class="btn" href="{% url 'employees' %}">Отмена</a></div>
+</form>
+{% endblock %}

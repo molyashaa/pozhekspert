@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Главная{% endblock %}
+{% block crumbs %}<b>Главная</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Мои задачи</h1><p>{{ user.role.name }} · назначенные этапы, сроки и замечания</p></div>
+  <div class="actions"><a class="btn" href="{% url 'ai_assistant' %}">{% icon 'sparkle' %}ИИ-помощник</a><a class="btn btn-primary" href="{% url 'tasks' %}">Все мои задачи</a></div>
+</div>
+<div class="grid g4">
+  <div class="stat"><div class="label">Мои задачи</div><div class="num">{{ stages|length|add:tasks.count }}</div></div>
+  <div class="stat amber"><div class="label">Срок на этой неделе</div><div class="num">{{ this_week|length }}</div></div>
+  <div class="stat blue"><div class="label">Возвращено на доработку</div><div class="num">{{ returned|length }}</div></div>
+  <a class="stat red" href="{% url 'remarks' %}?f=mine"><div class="label">Мои замечания</div><div class="num">{{ my_remarks|length }}</div></a>
+</div>
+<div class="grid g-main" style="margin-top:20px">
+  <div class="card">
+    <div class="card-head"><h2>Мои этапы</h2><span class="muted small">по срочности</span></div>
+    {% for s in stages %}
+      <a class="task-card" href="{% url 'stage_detail' s.pk %}">
+        <div class="top"><div><b>{{ s.name }}</b><div class="meta">{{ s.project.name }} · {{ s.project.number }} · этап {{ s.sequence_no }}</div></div>{% badge s.status s.get_status_display %}</div>
+        <div class="row" style="margin-top:8px;gap:20px"><span class="small muted">Срок:</span> {% deadline s.deadline %}
+          {% if s.status == 'blocked' %}<span class="reason">{{ s.block_reason }}</span>{% endif %}
+          {% if s.reviewer %}<span class="small muted">Проверяющий: {{ s.reviewer.short_name }}</span>{% endif %}</div>
+      </a>
+    {% empty %}<div class="empty"><b>Назначенных этапов нет</b>Когда ГИП назначит вас исполнителем, задача появится здесь.</div>{% endfor %}
+    {% if tasks %}<h3 style="margin:22px 0 10px">Задачи внутри этапов</h3>
+      {% for t in tasks %}<a class="task-card" href="{% url 'stage_detail' t.stage_id %}"><div class="top"><div><b>{{ t.title }}</b><div class="meta">{{ t.stage.project.name }} · {{ t.stage.name }}</div></div>{% badge t.status t.get_status_display %}</div><div class="small" style="margin-top:6px">Срок: {% deadline t.deadline %}</div></a>{% endfor %}{% endif %}
+  </div>
+  <div class="stack">
+    <div class="card"><div class="card-head"><h2>Новые замечания</h2></div>
+      {% for r in my_remarks %}<div class="item"><div class="item-head"><a href="{% url 'remark_detail' r.pk %}"><b>{{ r.number }}</b></a>{% badge r.severity r.get_severity_display %}</div><div>{{ r.text|truncatechars:110 }}</div><div class="meta">{{ r.stage.name }} · {{ r.section }}</div></div>
+      {% empty %}<div class="muted">Открытых замечаний нет.</div>{% endfor %}</div>
+    <div class="card"><div class="card-head"><h2>Моя загрузка</h2></div>
+      <div class="progress{% if load.overloaded %} red{% endif %}"><span style="width:{{ load.bar }}%"></span></div>
+      <p class="small muted" style="margin-top:8px">{{ load.count }} {{ load.count|plural:"активная задача,активные задачи,активных задач" }} · около {{ load.percent }}% на 30 дней{% if load.approximate %} (оценка приблизительная){% endif %}</p></div>
+  </div>
+</div>
+{% endblock %}

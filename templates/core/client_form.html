@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{% if client %}Изменить клиента{% else %}Новый клиент{% endif %}{% endblock %}
+{% block crumbs %}<a href="{% url 'clients' %}">Клиенты</a> / <b>{% if client %}{{ client.name }}{% else %}Новый клиент{% endif %}</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if client %}Изменить клиента{% else %}Новый клиент{% endif %}</h1><p>Сверяйте запись с источником; реквизиты вносятся, только если известны и нужны проекту. Изменения фиксируются в журнале.</p></div></div>
+<form class="card" method="post" novalidate style="max-width:900px">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+  {% include "partials/form_errors.html" %}
+  {% if form.duplicates %}<div class="alert alert-warning">{% icon 'alert' %}<div><b>Возможный дубль:</b>
+    {% for d in form.duplicates %}<p>«{{ d.name }}»{% if d.inn %}, ИНН {{ d.inn }}{% endif %} — {{ d.get_status_display|lower }} · <a href="{% url 'client_edit' d.pk %}">открыть существующую запись</a></p>{% endfor %}
+    <label class="check-line" style="margin-top:8px">{{ form.confirm_duplicate }} {{ form.confirm_duplicate.label }}</label></div></div>{% endif %}
+  <div class="form-grid">
+    {% include "partials/field.html" with field=form.name full=1 %}
+    {% include "partials/field.html" with field=form.client_type %}
+    {% include "partials/field.html" with field=form.inn %}
+    {% include "partials/field.html" with field=form.contact_person %}
+    {% include "partials/field.html" with field=form.phone %}
+    {% include "partials/field.html" with field=form.email %}
+    {% include "partials/field.html" with field=form.address %}
+    {% include "partials/field.html" with field=form.source full=1 %}
+    {% include "partials/field.html" with field=form.note full=1 %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">{% if client %}Сохранить изменения{% else %}Добавить клиента{% endif %}</button><a class="btn" href="{% if next %}{{ next }}{% else %}{% url 'clients' %}{% endif %}">Отмена</a></div>
+</form>
+{% endblock %}

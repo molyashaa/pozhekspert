@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Задачи{% endblock %}
+{% block crumbs %}<b>Задачи</b>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if manager_view %}Задачи и этапы{% else %}Мои задачи{% endif %}</h1><p>{% if manager_view %}Этапы проектов: исполнители, проверяющие, сроки и статусы{% else %}Назначенные вам этапы и задачи, отсортированные по сроку{% endif %}</p></div></div>
+<div class="chips" style="margin-bottom:14px">
+  <a class="chip {% if not f %}on{% endif %}" href="?">Активные</a>
+  {% if manager_view %}<a class="chip {% if f == 'unassigned' %}on{% endif %}" href="?f=unassigned">Без исполнителя</a>{% endif %}
+  <a class="chip {% if f == 'overdue' %}on{% endif %}" href="?f=overdue">Просроченные</a>
+  <a class="chip {% if f == 'rework' %}on{% endif %}" href="?f=rework">На доработке</a>
+  <a class="chip {% if f == 'review' %}on{% endif %}" href="?f=review">На проверке</a>
+  <a class="chip {% if f == 'accepted' %}on{% endif %}" href="?f=accepted">Принятые</a>
+</div>
+<div class="card flush">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Этап</th><th>Проект</th>{% if manager_view %}<th>Исполнитель</th>{% endif %}<th>Проверяющий</th><th>Срок</th><th>Статус</th><th></th></tr></thead>
+    <tbody>{% for s in stages %}
+      <tr class="clickable" data-href="{% url 'stage_detail' s.pk %}" tabindex="0">
+        <td><b><a href="{% url 'stage_detail' s.pk %}">{{ s.sequence_no }}. {{ s.name }}</a></b>{% if s.status == 'blocked' %}<span class="reason">{{ s.block_reason }}</span>{% endif %}</td>
+        <td>{{ s.project.name }}<span class="sub">{{ s.project.number }}</span></td>
+        {% if manager_view %}<td>{{ s.executor.short_name|default:"Не назначен" }}</td>{% endif %}
+        <td>{{ s.reviewer.short_name|default:"—" }}</td>
+        <td>{% deadline s.deadline s.status %}</td>
+        <td>{% badge s.status s.get_status_display %}</td>
+        <td>{% if manager_view and not s.executor and s.status != 'accepted' %}<a class="btn btn-sm btn-primary" href="{% url 'project_detail' s.project_id %}?tab=stages&assign={{ s.pk }}">Назначить</a>{% else %}<a href="{% url 'stage_detail' s.pk %}">Открыть</a>{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="7"><div class="empty"><b>Нет этапов по выбранному условию</b><a class="btn" href="?" style="margin-top:10px">Показать активные</a></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% if tasks %}
+<div class="card flush" style="margin-top:20px">
+  <div class="card-head"><h2>Задачи внутри этапов</h2></div>
+  <div class="table-wrap" style="margin-top:14px"><table class="table">
+    <thead><tr><th>Задача</th><th>Этап</th><th>Срок</th><th>Трудоёмкость</th><th>Статус</th></tr></thead>
+    <tbody>{% for t in tasks %}<tr class="clickable" data-href="{% url 'stage_detail' t.stage_id %}"><td><b>{{ t.title }}</b></td><td>{{ t.stage.project.number }} · {{ t.stage.name }}</td><td>{% deadline t.deadline t.status %}</td><td>{{ t.labor_hours|default:"—" }}{% if t.labor_hours %} ч{% endif %}</td><td>{% badge t.status t.get_status_display %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Клиенты{% endblock %}
+{% block crumbs %}<b>Клиенты</b>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Справочник клиентов</h1><p>Сведения вносятся по данным самого заказчика, договорных и заявочных материалов. Клиента со связанными проектами нельзя удалить — только архивировать.</p></div>
+  {% if can_manage %}<div class="actions"><a class="btn btn-primary" href="{% url 'client_create' %}">{% icon 'plus' %}Добавить клиента</a></div>{% endif %}
+</div>
+<div class="card flush">
+  <form class="filters" method="get">
+    <div class="search-in">{% icon 'search' %}<input class="input" type="search" name="q" value="{{ q }}" placeholder="Название, контакт, ИНН или почта"></div>
+    <select class="input" name="status" onchange="this.form.submit()" aria-label="Статус"><option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option><option value="archived" {% if status == 'archived' %}selected{% endif %}>Архивные</option><option value="all" {% if status == 'all' %}selected{% endif %}>Все</option></select>
+    <button class="btn btn-primary" type="submit">Найти</button>
+  </form>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Название или ФИО</th><th>Контактное лицо</th><th>Телефон</th><th>Почта</th><th>Проектов</th><th>Статус</th><th>Изменён</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for c in page %}
+      <tr>
+        <td><b>{{ c.name }}</b><span class="sub">{{ c.get_client_type_display }}{% if c.inn %} · ИНН {{ c.inn }}{% endif %}{% if c.is_demo %} · тестовая запись{% endif %}</span></td>
+        <td>{{ c.contact_person|default:"—" }}</td><td>{{ c.phone|default:"—" }}</td><td>{{ c.email|default:"—" }}</td>
+        <td>{% if c.projects_count %}<a href="{% url 'projects' %}?client={{ c.pk }}">{{ c.projects_count }}</a>{% else %}0{% endif %}</td>
+        <td>{% if c.status == 'active' %}{% badge 'active' 'Активный' %}{% else %}{% badge 'archived' 'Архивный' %}{% endif %}</td>
+        <td class="small">{{ c.updated_at|when }}{% if c.updated_by %}<span class="sub">{{ c.updated_by.short_name }}</span>{% endif %}</td>
+        {% if can_manage %}<td style="white-space:nowrap"><a class="btn btn-sm" href="{% url 'client_edit' c.pk %}">Изменить</a>
+          <form method="post" action="{% url 'client_archive' c.pk %}" class="inline" data-confirm="{% if c.status == 'active' %}Клиент станет архивным и не будет предлагаться в новых проектах. Связанные проекты и история сохранятся.{% else %}Клиент снова станет активным.{% endif %}">{% csrf_token %}<button class="btn btn-sm {% if c.status == 'active' %}btn-warn{% endif %}" type="submit">{% if c.status == 'active' %}Архивировать{% else %}Восстановить{% endif %}</button></form></td>{% endif %}
+      </tr>
+    {% empty %}<tr><td colspan="8"><div class="empty"><b>Клиенты не найдены</b>{% if can_manage %}<a class="btn btn-primary" href="{% url 'client_create' %}" style="margin-top:10px">Добавить клиента</a>{% endif %}</div></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "partials/pager.html" %}
+</div>
+{% endblock %}

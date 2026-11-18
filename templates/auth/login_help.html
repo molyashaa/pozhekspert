@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Не удаётся войти{% endblock %}
+{% block body %}
+<div class="login" style="grid-template-columns:1fr">
+  <section class="login-right">
+    <div class="login-card">
+      <h2>Не удаётся войти?</h2>
+      <p class="sub">Самостоятельное восстановление пароля в прототипе не предусмотрено — доступ восстанавливает директор.</p>
+      <div class="dl-list">
+        <div><div class="k">Забыли пароль</div><div class="v">Обратитесь к директору: он нажмёт «Сбросить доступ» и выдаст временный пароль. При входе система попросит задать новый.</div></div>
+        <div><div class="k">Вход временно заблокирован</div><div class="v">После 5 неудачных попыток вход блокируется на 15 минут. Подождите или попросите директора разблокировать учётную запись.</div></div>
+        <div><div class="k">Учётная запись заблокирована или деактивирована</div><div class="v">Решение принимает директор. Ваши проекты, документы и замечания при этом сохраняются.</div></div>
+      </div>
+      <p style="margin-top:20px"><a class="btn btn-block" href="{% url 'login' %}">Вернуться ко входу</a></p>
+    </div>
+  </section>
+</div>
+{% endblock %}
